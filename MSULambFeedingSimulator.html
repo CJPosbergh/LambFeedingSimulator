@@ -1,0 +1,1604 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style></head><body>
+<title>MSU Lamb Feeding Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Public+Sans:wght@400;500;600;700&family=Zilla+Slab:wght@500;600&display=swap">
+<style>/* Layout: sticky top bar, season rail on the left (stacks above content on phones), work area with tables framed in their own scroll boxes */
+:root {
+  --bg: #F1F3EE; --surface: #FBFCF9; --surface-2: #E8ECE5; --ink: #1C2520; --ink-2: #48554D; --muted: #6E7C73; --line: #D2D9CF; --line-2: #BCC5BA;
+  --accent: #1F5F8B; --accent-ink: #FFFFFF; --accent-soft: #DCE7F0;
+  --good: #1E7438; --good-soft: #DCEEDF; --warn: #8E5B00; --warn-soft: #F5E9CF; --bad: #A93232; --bad-soft: #F5DDDA;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+  --shadow: 0 1px 2px rgba(28, 37, 32, .06), 0 4px 16px rgba(28, 37, 32, .06);
+  --font-display: 'Zilla Slab', 'Rockwell', Georgia, serif;
+  --font-body: 'Public Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-data: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111613; --surface: #18201B; --surface-2: #212A24; --ink: #E4EAE3; --ink-2: #B2BDB5; --muted: #8A978E; --line: #2C3730; --line-2: #3A473F;
+    --accent: #7DB2DB; --accent-ink: #0D1A23; --accent-soft: #1C3243;
+    --good: #72C98C; --good-soft: #193022; --warn: #E0B25B; --warn-soft: #362C16; --bad: #EE8C82; --bad-soft: #3A1E1C;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 16px rgba(0, 0, 0, .25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111613; --surface: #18201B; --surface-2: #212A24; --ink: #E4EAE3; --ink-2: #B2BDB5; --muted: #8A978E; --line: #2C3730; --line-2: #3A473F;
+  --accent: #7DB2DB; --accent-ink: #0D1A23; --accent-soft: #1C3243;
+  --good: #72C98C; --good-soft: #193022; --warn: #E0B25B; --warn-soft: #362C16; --bad: #EE8C82; --bad-soft: #3A1E1C;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 16px rgba(0, 0, 0, .25);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--font-body); font-size: 14px; line-height: 1.5; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.2; }
+h2 { font-size: 1.55rem; }
+h3 { font-size: 1.12rem; }
+p { margin: 0; }
+a { color: var(--accent); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono, .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.num { text-align: right; }
+.muted { color: var(--muted); }
+.small { font-size: .82rem; }
+.eyebrow { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+/* top bar */
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: var(--surface); border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 10px 16px;
+}
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { font-size: 1.35rem; letter-spacing: .01em; }
+.brand .flock { color: var(--muted); font-size: .85rem; }
+.nav { display: flex; gap: 2px; flex-wrap: wrap; }
+.nav button { border: 0; background: none; padding: 6px 10px; border-radius: var(--r); cursor: pointer; color: var(--ink-2); font-weight: 500; }
+.nav button:hover { background: var(--surface-2); }
+.nav button[aria-current="page"] { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+.season-pill { margin-left: auto; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.kv { display: flex; flex-direction: column; line-height: 1.15; }
+.kv b { font-family: var(--font-data); font-size: .95rem; font-weight: 600; }
+.kv span { font-size: .7rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+
+.banner { margin: 12px 16px 0; padding: 10px 14px; border-radius: var(--r); background: var(--warn-soft); color: var(--ink); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.banner p { flex: 1 1 240px; }
+
+/* shell */
+.shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 20px; padding: 16px; padding-block: 16px 48px; max-width: 1500px; margin: 0 auto; }
+.shell.wide { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 860px) { .shell { grid-template-columns: minmax(0, 1fr); } }
+
+.rail { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 76px; align-self: start; }
+.rail .yr { font-family: var(--font-display); font-size: 1.15rem; margin-bottom: 8px; }
+.rail button { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: center; text-align: left; border: 0; background: none; padding: 7px 8px; border-radius: var(--r); cursor: pointer; color: var(--ink-2); }
+.rail button .n { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line-2); display: grid; place-items: center; font-family: var(--font-data); font-size: .72rem; }
+.rail button .t { display: flex; flex-direction: column; line-height: 1.2; }
+.rail button .t small { color: var(--muted); font-size: .74rem; }
+.rail button:hover { background: var(--surface-2); }
+.rail button[aria-current="step"] { background: var(--surface); box-shadow: var(--shadow); color: var(--ink); font-weight: 600; }
+.rail button[aria-current="step"] .n { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.rail button.done .n { border-color: var(--good); color: var(--good); }
+@media (max-width: 860px) {
+  .rail { position: static; flex-direction: row; overflow-x: auto; gap: 4px; padding-bottom: 4px; }
+  .rail .yr { display: none; }
+  .rail button { grid-template-columns: 22px auto; white-space: nowrap; }
+  .rail button .t small { display: none; }
+}
+
+.main { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 20px; justify-content: space-between; }
+.head p { max-width: 68ch; color: var(--ink-2); margin-top: 4px; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; min-width: 0; }
+.panel > h3 + * { margin-top: 10px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.spacer { flex: 1; }
+
+/* stat strip */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.stat { background: var(--surface); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; box-shadow: 1px 0 0 var(--line), 0 1px 0 var(--line); }
+.stat b { font-family: var(--font-data); font-size: 1.2rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat span { font-size: .74rem; color: var(--muted); }
+
+/* buttons */
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-2); background: var(--surface); padding: 6px 12px; border-radius: var(--r); cursor: pointer; font-weight: 500; white-space: nowrap; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--bad); border-color: var(--bad); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.sm { padding: 3px 8px; font-size: .82rem; }
+input[type="number"], input[type="text"], select, textarea { background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r); padding: 5px 8px; min-width: 0; }
+input[type="number"] { width: 6.5em; font-family: var(--font-data); }
+textarea { width: 100%; font-family: var(--font-data); font-size: .78rem; }
+label.inline { display: inline-flex; gap: 6px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: var(--r); overflow: hidden; }
+.seg button { border: 0; background: var(--surface); padding: 5px 12px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line-2); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); font-weight: 600; }
+
+/* tables */
+.tframe { overflow: auto; max-height: 62vh; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .82rem; }
+th, td { padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+thead th { position: sticky; top: 0; background: var(--surface-2); z-index: 1; text-align: left; font-weight: 600; font-size: .74rem; color: var(--ink-2); cursor: pointer; user-select: none; }
+thead th.num { text-align: right; }
+thead th[aria-sort] { color: var(--ink); }
+tbody tr:hover td { background: var(--surface-2); }
+tbody tr.sel td { background: var(--accent-soft); }
+tbody tr.gone td { color: var(--muted); text-decoration: line-through; }
+td.tag button { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font-family: var(--font-data); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 2px; }
+td input[type="checkbox"], th input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
+.fav { color: var(--good); } .unf { color: var(--bad); }
+.ledger td:first-child { white-space: normal; }
+.ledger tr.total td { font-weight: 700; border-top: 2px solid var(--line-2); }
+
+/* badges */
+.badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-family: var(--font-data); font-size: .74rem; font-weight: 600; border: 1px solid transparent; }
+.badge.good { background: var(--good-soft); color: var(--good); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
+.badge.bad { background: var(--bad-soft); color: var(--bad); }
+.badge.neutral { background: var(--surface-2); color: var(--ink-2); }
+.badge.unk { color: var(--muted); border-color: var(--line); }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 4px; border: 1px solid var(--line); border-radius: 999px; font-size: .8rem; }
+.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex: none; }
+
+.msg { padding: 10px 12px; border-radius: var(--r); display: flex; gap: 10px; align-items: flex-start; }
+.msg.err { background: var(--bad-soft); }
+.msg.warn { background: var(--warn-soft); }
+.msg.ok { background: var(--good-soft); }
+.msg.info { background: var(--accent-soft); }
+.msg .ic { font-weight: 700; font-family: var(--font-data); }
+
+/* market cards */
+.lots { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+.lot { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.lot.bought { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.lot.gone { opacity: .55; }
+.lot header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.lot header b { font-family: var(--font-display); font-size: 1.1rem; }
+.lot .price { font-family: var(--font-data); font-weight: 600; font-size: 1.05rem; }
+.lot dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 10px; margin: 0; }
+.lot dt { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.lot dd { margin: 0; font-family: var(--font-data); font-size: .85rem; }
+
+/* charts */
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .ttl { font-weight: 600; font-size: .88rem; margin-bottom: 2px; }
+.chart .sub { font-size: .74rem; color: var(--muted); margin-bottom: 6px; }
+.chart .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); padding: 5px 8px; border-radius: 4px; font-size: .76rem; font-family: var(--font-data); white-space: nowrap; z-index: 3; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .78rem; color: var(--ink-2); margin-top: 4px; }
+.legend i { display: inline-block; width: 16px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+.legend i.dash { background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px) !important; }
+.charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+
+/* drawer */
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100%); background: var(--surface); border-left: 1px solid var(--line); box-shadow: var(--shadow); z-index: 40; overflow: auto; padding: 16px; padding-block: calc(16px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; }
+.drawer header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.drawer h2 { font-family: var(--font-data); font-size: 1.3rem; }
+.ped { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; font-size: .78rem; align-items: center; }
+.ped div { border: 1px solid var(--line); border-radius: 4px; padding: 4px 6px; font-family: var(--font-data); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ped .self { grid-row: span 4; align-self: center; background: var(--accent-soft); }
+.ped .par { grid-row: span 2; }
+.accbar { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; width: 70px; display: inline-block; vertical-align: middle; }
+.accbar i { display: block; height: 100%; background: var(--accent); }
+
+.overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--bg) 70%, transparent); z-index: 60; display: grid; place-items: center; }
+.overlay .box { background: var(--surface); padding: 22px 28px; border-radius: var(--r); box-shadow: var(--shadow); font-family: var(--font-display); font-size: 1.2rem; text-align: center; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: var(--r); z-index: 70; font-size: .88rem; max-width: calc(100% - 32px); }
+
+.prose { max-width: 72ch; display: flex; flex-direction: column; gap: 10px; }
+.prose h3 { margin-top: 10px; }
+.prose ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.form { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px 16px; }
+.form label { display: flex; flex-direction: column; gap: 3px; font-size: .8rem; color: var(--ink-2); }
+.form label input { width: 100%; }
+details summary { cursor: pointer; font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) { .lot, .btn, .rail button { transition: background-color .15s, box-shadow .15s; } }
+
+.ration-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 1150px) { .ration-grid { grid-template-columns: minmax(0, 1fr); } }
+</style>
+<header id="top" class="topbar"><div class="brand"><h1>MSU Lamb Feeding Simulator</h1><span class="flock">Feedlot finishing</span></div></header>
+<div id="view"><div class="shell wide"><main class="main"><p class="muted">Unloading the lambs…</p></main></div></div>
+<div id="overlays"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+<script>/* ============================================================
+   Lamb feeding simulation engine
+   Individual feeder lambs on a finishing ration: intake, energy and MP,
+   body composition, health risks driven by the ration, carcass grading,
+   and a class-wide slaughter lamb market settled through files.
+   ============================================================ */
+(function (global) {
+'use strict';
+const LB = 2.20462262;           // lb per kg
+const MJ_PER_MCAL = 4.184;
+
+/* ---------- seeded random numbers ---------- */
+function hash32(str) { let h = 2166136261 >>> 0; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
+function makeRng(seedStr) {
+  let a = hash32(seedStr);
+  const u = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  let spare = null;
+  const n = () => { if (spare !== null) { const s = spare; spare = null; return s; } let x, y, r; do { x = 2 * u() - 1; y = 2 * u() - 1; r = x * x + y * y; } while (r >= 1 || r === 0); const f = Math.sqrt(-2 * Math.log(r) / r); spare = y * f; return x * f; };
+  return { u, n, bern: p => u() < p, int: k => Math.floor(u() * k) };
+}
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const r2 = v => Math.round(v * 100) / 100, r1 = v => Math.round(v * 10) / 10;
+
+/* ---------- feeds (typical table values, DM basis unless noted) ----------
+   price: $/ton as fed. dm %, cp % DM, rup % of CP, tdn % DM, ndf % DM, starch % DM, fat % DM,
+   ca, p, s % DM, cu, mo ppm DM. forage: counts as forage (effective fiber); kind: grain, protein, forage, byproduct, mineral */
+const FEEDS = [
+  { key: 'corn', name: 'Corn, whole shelled', kind: 'grain', price: 195, dm: 88, cp: 9.0, rup: 55, tdn: 88, ndf: 9, starch: 72, fat: 4.0, ca: 0.03, p: 0.30, s: 0.12, cu: 4, mo: 0.6, forage: false },
+  { key: 'barley', name: 'Barley, rolled', kind: 'grain', price: 165, dm: 89, cp: 12.5, rup: 30, tdn: 84, ndf: 19, starch: 58, fat: 2.0, ca: 0.06, p: 0.39, s: 0.15, cu: 6, mo: 0.6, forage: false },
+  { key: 'ddgs', name: 'Distillers dried grains (DDGS)', kind: 'byproduct', price: 230, dm: 90, cp: 30, rup: 55, tdn: 88, ndf: 38, starch: 5, fat: 10, ca: 0.05, p: 0.85, s: 0.70, cu: 6, mo: 1.0, forage: false },
+  { key: 'sbm', name: 'Soybean meal, 47%', kind: 'protein', price: 415, dm: 89, cp: 53, rup: 35, tdn: 84, ndf: 10, starch: 2, fat: 1.5, ca: 0.35, p: 0.70, s: 0.44, cu: 20, mo: 3.0, forage: false },
+  { key: 'hulls', name: 'Soybean hulls, pelleted', kind: 'byproduct', price: 185, dm: 90, cp: 12, rup: 30, tdn: 77, ndf: 66, starch: 2, fat: 2.0, ca: 0.55, p: 0.17, s: 0.12, cu: 12, mo: 1.0, forage: false },
+  { key: 'alfalfa', name: 'Alfalfa hay, good', kind: 'forage', price: 225, dm: 90, cp: 19, rup: 25, tdn: 58, ndf: 45, starch: 2, fat: 2.5, ca: 1.40, p: 0.25, s: 0.28, cu: 9, mo: 1.5, forage: true },
+  { key: 'grass', name: 'Grass hay, good', kind: 'forage', price: 175, dm: 90, cp: 10, rup: 25, tdn: 54, ndf: 62, starch: 2, fat: 2.0, ca: 0.50, p: 0.22, s: 0.18, cu: 7, mo: 1.0, forage: true },
+  { key: 'pellet', name: 'Alfalfa pellets, dehydrated', kind: 'forage', price: 260, dm: 91, cp: 17, rup: 40, tdn: 57, ndf: 44, starch: 2, fat: 2.5, ca: 1.50, p: 0.25, s: 0.24, cu: 9, mo: 1.5, forage: true },
+  { key: 'limestone', name: 'Limestone', kind: 'mineral', price: 120, dm: 99, cp: 0, rup: 0, tdn: 0, ndf: 0, starch: 0, fat: 0, ca: 38, p: 0, s: 0, cu: 0, mo: 0, forage: false },
+  { key: 'nh4cl', name: 'Ammonium chloride', kind: 'mineral', price: 700, dm: 99, cp: 0, rup: 0, tdn: 0, ndf: 0, starch: 0, fat: 0, ca: 0, p: 0, s: 0, cu: 0, mo: 0, forage: false },
+  { key: 'sheepmin', name: 'Sheep mineral (no added copper)', kind: 'mineral', price: 600, dm: 98, cp: 0, rup: 0, tdn: 0, ndf: 0, starch: 0, fat: 0, ca: 14, p: 7, s: 0.5, cu: 10, mo: 0, forage: false },
+  { key: 'cattlemin', name: 'Cattle mineral (1,500 ppm copper)', kind: 'mineral', price: 550, dm: 98, cp: 0, rup: 0, tdn: 0, ndf: 0, starch: 0, fat: 0, ca: 14, p: 7, s: 0.5, cu: 1500, mo: 0, forage: false },
+  { key: 'salt', name: 'Salt, white', kind: 'mineral', price: 150, dm: 99, cp: 0, rup: 0, tdn: 0, ndf: 0, starch: 0, fat: 0, ca: 0, p: 0, s: 0, cu: 0, mo: 0, forage: false }
+];
+const NUTS = ['dm', 'cp', 'rup', 'tdn', 'ndf', 'starch', 'fat', 'ca', 'p', 's', 'cu', 'mo'];
+
+/* ---------- price-year presets (instructor) ---------- */
+// Feeder prices: Billings (USDA AMS) near mid-September; slaughter prices: early-December Billings / Sioux Falls
+// (2025: USDA ERS national Q4 average, since the weekly archive ends Sept 2025).
+// Feed prices ($/ton as fed, delivered) are the 2026 defaults scaled by each year's USDA price index for that feed:
+//   corn: NASS U.S. price received (Nov; 2025 vs 2026 by Aug); feed barley: NASS U.S. feed barley (Aug);
+//   alfalfa / grass hay: NASS Montana alfalfa / other hay (Aug); alfalfa pellets: NASS U.S. alfalfa (Aug);
+//   soybean meal (Iowa), DDGS (SD-MN-IA) and soy hulls (IL-IA-MN): AMS processor feedstuff reports (Sept; 2025 vs 2026 by Oct).
+//   Minerals, salt, limestone and ammonium chloride are held at 2026 prices.
+const LIVE_SHAPE = [[100, 1.023], [115, 1], [130, 0.969], [145, 0.908], [160, 0.82], [175, 0.744]];
+const liveAt = p115 => LIVE_SHAPE.map(([w, r]) => [w, Math.round(p115 * r * 100) / 100]);
+const PRICE_YEARS = {
+  2023: { label: 'Fall 2023', feeds: { corn: 203, barley: 240, ddgs: 230, sbm: 441, hulls: 178, alfalfa: 205, grass: 170, pellet: 290 }, buySlide: [[65, 2.35], [75, 2.29], [85, 2.22], [95, 2.12], [105, 2.05]], liveSlide: liveAt(1.85),
+    note: 'Feeders about $222/cwt at 85 lb (Billings, Sept 15, 2023); fats about $185/cwt in early December (Billings $182, Sioux Falls $180-205). Feed was dear: feed barley ($240/ton) cost more than corn ($203) after the 2023 drought, and soybean meal was $441. Feeders cost more than fats, so a well-run pen loses a little.' },
+  2024: { label: 'Fall 2024', feeds: { corn: 177, barley: 166, ddgs: 158, sbm: 384, hulls: 117, alfalfa: 138, grass: 120, pellet: 221 }, buySlide: [[65, 2.14], [75, 1.92], [85, 1.70], [95, 1.57], [105, 1.51]], liveSlide: liveAt(1.72),
+    note: 'Feeders about $170/cwt at 85 lb (Billings, Sept 27, 2024) after the late-summer slide; fats about $172/cwt (Billings, Dec 6, 2024). Cheap hay ($120-138/ton) and by-products. Feeders and fats cost about the same, so a well-run pen makes money.' },
+  2025: { label: 'Fall 2025', feeds: { corn: 174, barley: 168, ddgs: 163, sbm: 344, hulls: 119, alfalfa: 153, grass: 120, pellet: 216 }, buySlide: [[65, 2.36], [75, 2.19], [85, 2.10], [95, 2.05], [105, 1.98]], liveSlide: liveAt(2.25),
+    note: 'Feeders about $210/cwt at 85 lb (Billings, Sept 12, 2025), bought before the October rally; fats about $225/cwt (USDA ERS national Q4 2025 average, $224.63). Feed was the cheapest of the four years. A strong year for feeders.' },
+  2026: { label: 'Fall 2026', feeds: null, buySlide: null, liveSlide: null,
+    note: 'The current defaults: feeders about $347/cwt at 84 lb and fats $262 at 115 lb (Billings, Sept-Oct 2026). Hay and by-products are up sharply from 2025 (alfalfa $225/ton). Feeders are very dear, so a well-run pen loses money.' }
+};
+function applyPriceYear(s, yr) {
+  const p = PRICE_YEARS[yr], d = defaultSettings(); if (!p) return s;
+  s.buySlide = clone2(p.buySlide || d.buySlide); s.liveSlide = clone2(p.liveSlide || d.liveSlide);
+  const base = {}; for (const f of FEEDS) base[f.key] = f.price;
+  for (const f of s.feeds) { const v = p.feeds && p.feeds[f.key] != null ? p.feeds[f.key] : base[f.key]; if (v != null) f.price = v; }
+  s.startDate = yr + (s.startDate || '2026-09-15').slice(4);
+  s.priceYear = String(yr);
+  return s;
+}
+function clone2(a) { return a.map(x => x.slice()); }
+
+/* ---------- settings ---------- */
+function defaultSettings() {
+  return {
+    priceYear: '2026',
+    startDate: '2026-09-15', rounds: 12, daysPerRound: 7, head: 200, arrivalLb: 82, arrivalSD: 8, wetherFrac: 0.6,
+    feeds: FEEDS.map(f => Object.assign({}, f)),
+    // feeder lamb purchase: USDA AMS 1772, Billings MT, Medium & Large 1-2 feeder lambs, Sep 21 & Oct 5, 2026
+    buySlide: [[54, 4.10], [64, 3.92], [75, 3.71], [84, 3.47], [95, 3.07], [106, 2.94]],
+    // slaughter lambs, live, $/lb: Billings wooled & shorn Choice 1-3 (115 lb $2.625, 130 lb $2.54, Oct 5, 2026); ends extrapolated
+    liveSlide: [[100, 2.68], [115, 2.62], [130, 2.54], [145, 2.38], [160, 2.15], [175, 1.95]],
+    // carcass grid, $/lb hot carcass weight: base = Billings live price x (1 - 4% shrink) / 50.5% dressing (packer grid prices are not publicly reported)
+    gridBase: 4.85,
+    gridWeight: [[0, -0.60], [45, -0.25], [55, 0], [85, -0.20], [95, -0.50]],   // [from lb HCW, adjustment $/lb]
+    gridYG: [0.05, 0, 0, -0.20, -0.50],                                          // YG1..YG5
+    gridThin: -0.40,                                                             // under 0.10 in fat: under-finished
+    lot2Head: 0, lot2Round: 3, lot2Lb: 82,   // a second lot of feeder lambs arrives at the start of this period (0 head = none)
+    minLot: 10,                       // buyers take at least this many head per shipment (except the final sale)
+    dockYG4: 0.10, dockYG5: 0.25,
+    sickDock: 0.20,                   // lambs sick (under treatment) when they ship lose this share of their value     // overfat docks on the live sale, $/lb live: yield grade 4 (0.36 in.+ backfat), 5 (0.46 in.+)
+    shrink: 0.04, yardage: 0.08, wastage: 0.05, interest: 0.08,
+    vaccineCost: 1.25, implantCost: 1.50, shearCost: 6.00, treatCost: 8.00, ultrasoundCost: 3.00, lasalocidPerTon: 8.00,
+    fleeceLb: 3.5, fleecePrice: 1.10,
+    // market
+    priceSD: 0.04, feedSD: 0.03, priceRho: 0.7, elasticity: 0.15, marketWindow: 5, priceIdx: null, feedIdx: null,
+    // weather: mean daily temperature (°F) for each period, roughly Bozeman mid-September to mid-December
+    temps: [56, 54, 51, 48, 45, 42, 39, 36, 33, 30, 28, 26, 24, 22],
+    // risk multipliers (1 = default)
+    riskAcid: 1, riskCalc: 1, riskEntero: 1, riskPolio: 1, riskCopper: 1, riskCocci: 1, riskPneu: 1,
+    classSync: false                 // self-paced: every period settles at once, no class files
+  };
+}
+function feedMap(s) { const m = {}; for (const f of s.feeds) m[f.key] = f; return m; }
+
+/* ---------- price paths (same for everyone with the same class code) ---------- */
+function genPaths(seed, s) {
+  const rng = makeRng(seed + ':paths'), n = s.rounds + 2, live = [], feed = [];
+  let zl = 0, zf = 0; const q = Math.sqrt(1 - s.priceRho * s.priceRho);
+  for (let i = 0; i < n; i++) {
+    zl = i ? s.priceRho * zl + q * rng.n() * s.priceSD : 0;
+    zf = i ? s.priceRho * zf + q * rng.n() * s.feedSD : 0;
+    live.push(r2(Math.exp(zl))); feed.push(r2(Math.exp(zf)));
+  }
+  const temps = [];
+  for (let i = 0; i < n; i++) temps.push(Math.round((s.temps[i] != null ? s.temps[i] : s.temps[s.temps.length - 1]) + rng.n() * 5));
+  return { live, feed, temps };
+}
+function feedIdx(st, r) { const s = st.settings; return s.feedIdx && s.feedIdx[r - 1] != null ? s.feedIdx[r - 1] : st.paths.feed[r - 1]; }
+function baseLiveIdx(st, r) { const s = st.settings; return s.priceIdx && s.priceIdx[r - 1] != null ? s.priceIdx[r - 1] : st.paths.live[r - 1]; }
+function feedPrice(st, key, r) { return feedMap(st.settings)[key].price * (feedMap(st.settings)[key].kind === 'mineral' ? 1 : feedIdx(st, r)); }
+
+/* ---------- ration analysis ---------- */
+// ration: { feedKey: % of DM }. Returns nutrient densities on a DM basis.
+function analyze(s, ration, priceOf) {
+  const fm = feedMap(s); let tot = 0;
+  for (const k in ration) tot += Math.max(0, +ration[k] || 0);
+  const a = { tot, cp: 0, rupG: 0, tdn: 0, ndf: 0, starch: 0, fat: 0, ca: 0, p: 0, s: 0, cu: 0, mo: 0, forage: 0, forageNDF: 0, conc: 0, costDM: 0, asFedPerDM: 0, nh4cl: 0 };
+  if (tot <= 0) return a;
+  for (const k in ration) {
+    const f = fm[k]; if (!f) continue;
+    const x = Math.max(0, +ration[k] || 0) / tot;
+    a.cp += x * f.cp; a.rupG += x * f.cp * f.rup / 100; a.tdn += x * f.tdn; a.ndf += x * f.ndf; a.starch += x * f.starch; a.fat += x * f.fat;
+    a.ca += x * f.ca; a.p += x * f.p; a.s += x * f.s; a.cu += x * f.cu; a.mo += x * f.mo;
+    if (f.forage) { a.forage += x * 100; a.forageNDF += x * f.ndf; }
+    else if (f.kind !== 'mineral') a.conc += x * 100;
+    if (k === 'nh4cl') a.nh4cl += x * 100;
+    const asFed = x / (f.dm / 100);                // kg as fed per kg DM of ration
+    a.asFedPerDM += asFed;
+    a.costDM += asFed * (priceOf ? priceOf(k) : f.price);   // $/ton DM (price per ton as fed)
+  }
+  a.rup = a.cp > 0 ? a.rupG / a.cp * 100 : 0;
+  a.rdp = a.cp - a.rupG;                            // % DM
+  a.de = a.tdn * 0.04409;                           // Mcal DE/kg DM = TDN% x 0.04409
+  a.me = 0.82 * a.de;                               // Mcal ME/kg DM
+  a.md = a.me * MJ_PER_MCAL;                        // MJ ME/kg DM
+  a.caP = a.p > 0 ? a.ca / a.p : 0;
+  a.cuMo = a.mo > 0 ? a.cu / a.mo : 99;
+  a.dmPct = a.asFedPerDM > 0 ? 100 / a.asFedPerDM : 0;      // ration DM % as fed
+  a.costAsFed = a.costDM / a.asFedPerDM;            // $/ton as fed
+  return a;
+}
+
+/* ---------- one lamb, one day ---------- */
+// L: lamb, A: ration analysis for the day, ctx: { T, adlib, limit, lasalocid }
+function lambDay(L, A, ctx, s, out) {
+  const bw = L.bw, Z = bw / L.mw;
+  const md = Math.max(6, A.md * (1 - 0.05 * Math.max(0, A.fat - 6)) * (ctx.rdpFactor || 1));
+  const km = 0.02 * md + 0.5, kg = Math.min(0.6, 0.043 * md) * (ctx.lasalocid ? 1.04 : 1) * (L.implant ? 1.04 : 1);
+  // maintenance, with cold stress (shorn lambs feel it more, fading as wool regrows)
+  const shornF = L.shornDay != null ? Math.exp(-(L.dof - L.shornDay) / 40) : 0;
+  const cold = 1 + (0.012 * shornF + 0.003) * Math.max(0, 30 - ctx.T);
+  const mem = 0.30 * Math.pow(bw, 0.75) / km * cold * (L.sick > 0 ? 1.05 : 1);
+  // potential gain (empty body) and the energy cost of that gain
+  const gpot = 0.34 * L.g * Math.max(0.15, 1.5 - Z) * (L.implant ? 1.08 : 1) * (L.chronic ? 0.8 : 1) * (L.sick > 0 ? L.sickF : 1);
+  const plane = L.plane == null ? 0.9 : L.plane;
+  const eg = 6.7 + 20.3 / (1 + Math.exp(-6 * (Z - 0.4))) + 1.5 * (plane - 0.8) + (L.sex === 'E' ? 1.0 : 0) - (L.implant ? 0.8 : 0);
+  // intake: the least of energy demand, rumen fill (NDF) and a hard cap
+  const demand = (mem + gpot * eg / kg) / md * L.im * (1 + 0.004 * Math.max(0, 40 - ctx.T)) * (L.shornDay != null ? 1.04 : 1);
+  const fill = A.ndf > 0 ? 0.018 * bw / (A.ndf / 100) : 99;
+  let dmiAd = Math.min(demand, fill, 0.05 * bw) * (L.offFeed > 0 ? L.offF : 1);
+  const dmi = ctx.adlib ? dmiAd : dmiAd * ctx.limit;   // limit feeding: a set share of what the lamb would eat
+  // energy available for gain
+  const mei = dmi * md;
+  const neg = (mei - mem) * kg;
+  let gainE = neg / eg;
+  // metabolizable protein
+  const tdnG = dmi * 1000 * A.tdn / 100, rdpG = dmi * 1000 * A.rdp / 100, rupG = dmi * 1000 * A.rupG / 100;
+  const mcp = Math.min(0.13 * tdnG, rdpG * 1.0);
+  const mp = 0.64 * mcp + 0.80 * rupG;
+  const f = clamp((eg - 5.07) / 34.2, 0.05, 0.75);
+  const pg = 0.215 * (1 - f);
+  const mpm = 2.6 * Math.pow(bw, 0.75) + 12;
+  const gainP = Math.max(0, mp - mpm) * 0.59 / (1000 * pg);
+  let gain, fatGain, ffGain;
+  if (gainE <= 0) {                               // losing weight: mostly fat
+    gain = gainE * eg / 23; fatGain = gain * 0.7; ffGain = gain * 0.3;
+  } else {
+    gain = Math.min(gainE, gainP, gpot * 1.1);
+    fatGain = gain * f; ffGain = gain * (1 - f);
+    const spare = neg - gain * eg;               // energy not used for lean growth is laid down as fat
+    if (spare > 0) { const extra = spare / 39.3 * 0.75; fatGain += extra; gain += extra; }
+  }
+  L.fat = Math.max(1, L.fat + fatGain); L.ff = Math.max(5, L.ff + ffGain);
+  L.plane = gpot > 0 ? clamp(Math.min(gainE, gainP) / gpot, 0, 1.4) : 0.9;
+  if (out) { out.dmi = dmi; out.mei = mei; out.mem = mem; out.gainE = gainE; out.gainP = gainP; out.gpot = gpot; out.mp = mp; out.mpm = mpm; out.mpg = Math.max(0, gain) * 1000 * pg / 0.59; out.f = f; out.fill = fill; out.demand = demand; out.limit = dmi >= fill - 1e-9 ? 'fill' : 'energy'; }
+  return dmi;
+}
+// live weight from empty body: gut fill rises with forage
+function fillFrac(A) { return 0.915 - 0.0011 * A.forage; }
+function updateBW(L, A) { L.bw = (L.fat + L.ff) / fillFrac(A); }
+const fatPct = L => L.fat / (L.fat + L.ff) * 100;
+function fatThick(L) { return Math.max(0.03, 0.022 * (fatPct(L) - 13)) * (L.sex === 'E' ? 1.06 : 1) + (L.ftNoise || 0); }
+function dressing(L, A) { return 0.462 + 0.0035 * (fatPct(L) - 20) + 0.025 * (1 - A.forage / 100) + (L.shornDay != null ? 0.012 : 0); }
+function fatDock(s, yg) { return yg >= 5 ? (s.dockYG5 != null ? s.dockYG5 : 0.25) : yg >= 4 ? (s.dockYG4 != null ? s.dockYG4 : 0.10) : 0; }
+function yieldGrade(ft) { return clamp(Math.floor(0.4 + 10 * ft), 1, 5); }
+
+/* ---------- new game ---------- */
+function newFlockId() { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let t = ''; for (let i = 0; i < 6; i++) t += c[Math.floor(Math.random() * c.length)]; return t; }
+function defaultRation() { return { grass: 45, alfalfa: 25, barley: 25, sbm: 3, sheepmin: 1.5, salt: 0.5 }; }
+// what the lambs were eating when they arrived (off grass, on grass hay at the yard); the first ration change is measured from this
+function arrivalDiet() { return { grass: 100 }; }
+function rationTotal(ra) { return Object.values(ra || {}).reduce((t, v) => t + (+v || 0), 0); }
+function newGame(opts) {
+  const s = Object.assign(defaultSettings(), opts.settings || {});
+  const st = { app: 'bunkcall', v: 1, name: opts.name || 'Student', seed: opts.classCode || 'PRACTICE', fid: newFlockId(), created: Date.now(),
+    settings: s, lambs: [], pens: [], round: 1, led: {}, hist: [], events: [], cons: {}, settled: {}, bulls: {}, subs: {} };
+  st.paths = genPaths(st.seed, s);
+  makeLambs(st, makeRng(st.seed + ':lambs'), s.head, s.arrivalLb, 1, 1);
+  st.pens = [{ id: 1, name: 'Pen 1', ration: {}, prev: null, adlib: true, limit: 0.9, lasalocid: false, step: true }];
+  st.purchase = st.lambs.reduce((t, L) => t + L.cost, 0);
+  ledger(st, 0).purchase = st.purchase;
+  for (const L of st.lambs) L.fatEst = estFat(st, L);
+  return st;
+}
+// lambs: the same for everyone in the class
+function makeLambs(st, rng, n, meanLb, lot, priceIdx) {
+  const s = st.settings, out = [];
+  for (let k = 0; k < n; k++) {
+    const i = st.lambs.length;
+    const sex = rng.bern(s.wetherFrac) ? 'W' : 'E';
+    const lb = clamp(meanLb + rng.n() * s.arrivalSD, meanLb - 2.5 * s.arrivalSD, meanLb + 2.5 * s.arrivalSD);
+    const bw = lb / LB;
+    const mw = (sex === 'W' ? 105 : 80) * (1 + rng.n() * 0.07);
+    const fp = clamp(13 + rng.n() * 2 + (sex === 'E' ? 1 : 0), 8, 20) / 100;
+    const ebw = bw * 0.84;          // arrival gut fill off grass
+    const L = ({ id: i + 1, tag: String(i + 1).padStart(3, '0'), sex, bw, mw, g: clamp(1 + rng.n() * 0.12, 0.65, 1.35), im: clamp(1 + rng.n() * 0.07, 0.8, 1.2),
+      fat: ebw * fp, ff: ebw * (1 - fp), inWt: lb, pen: 1, status: 'feed', dof: 0, vacc: 0, implant: false, shornDay: null, liverCu: 220 + rng.n() * 30,
+      chronic: false, sick: 0, sickF: 1, offFeed: 0, offF: 1, plane: 0.9, adlibRef: null, ftNoise: rng.n() * 0.02, hist: [lb], dmiTot: 0, feedCost: 0, treat: 0, cause: null,
+      fatEst: null, ultra: false, cocci: 0, lot, lastConc: 0, cost: r2(lb * slide(s.buySlide, lb) * priceIdx) });
+    st.lambs.push(L); out.push(L);
+  }
+  return out;
+}
+// the second lot: bought at this period's feeder price, put in a pen of its own when there's room
+function arriveLot2(st) {
+  const s = st.settings, r = st.round;
+  if (!(s.lot2Head > 0) || r !== s.lot2Round || r > s.rounds || st.lot2) return;
+  const idx = baseLiveIdx(st, r);
+  const ls = makeLambs(st, makeRng(st.seed + ':lot2'), Math.round(s.lot2Head), s.lot2Lb || s.arrivalLb, 2, idx);
+  let pen;
+  if (st.pens.length < 4) { pen = { id: Math.max(...st.pens.map(p => p.id)) + 1, name: 'Lot 2', ration: {}, prev: null, adlib: true, limit: 0.9, lasalocid: false, step: true }; st.pens.push(pen); }
+  else pen = st.pens.reduce((a, p) => (onFeed(st).filter(L => L.pen === p.id).length < onFeed(st).filter(L => L.pen === a.id).length ? p : a), st.pens[0]);
+  const cost = ls.reduce((t, L) => t + L.cost, 0);
+  for (const L of ls) { L.pen = pen.id; L.fatEst = estFat(st, L); }
+  ledger(st, r).purchase += cost;
+  st.lot2 = { round: r, head: ls.length, cost: r2(cost), pen: pen.id, meanLb: r1(ls.reduce((t, L) => t + L.inWt, 0) / ls.length), idx };
+}
+function slide(t, x) { if (x <= t[0][0]) return t[0][1]; for (let i = 1; i < t.length; i++) if (x <= t[i][0]) { const f = (x - t[i - 1][0]) / (t[i][0] - t[i - 1][0]); return t[i - 1][1] + f * (t[i][1] - t[i - 1][1]); } return t[t.length - 1][1]; }
+function ledger(st, r) {
+  if (!st.led[r]) st.led[r] = { r, purchase: 0, feed: 0, yardage: 0, health: 0, shearing: 0, fleece: 0, interest: 0, sales: 0, soldHead: 0, ultrasound: 0 };
+  return st.led[r];
+}
+function ledgerNet(L) { return L.sales + L.fleece - L.purchase - L.feed - L.yardage - L.health - L.shearing - L.interest - L.ultrasound; }
+function estFat(st, L) {   // what a stockman's handling (or ultrasound) says about fat cover
+  const sd = L.ultra ? 0.025 : 0.07;
+  const rng = makeRng(st.seed + ':fat:' + L.id + ':' + st.round + (L.ultra ? 'u' : ''));
+  return Math.max(0.02, fatThick(L) + rng.n() * sd);
+}
+
+/* ---------- decisions for a round ---------- */
+// dec: { pens: [{id, name, ration, adlib, limit, lasalocid, step}], move: {lambId: penId}, consign: {lambId: 'live'|'grid'},
+//        vaccinate: bool, implant: bool, shear: bool, ultrasound: [penIds] }
+function onFeed(st) { return st.lambs.filter(L => L.status === 'feed'); }
+function validate(st, dec) {
+  const errs = [], warns = [], s = st.settings, r = st.round;
+  for (const p of dec.pens) {
+    const tot = Object.values(p.ration).reduce((t, v) => t + (+v || 0), 0);
+    const n = onFeed(st).filter(L => (dec.move[L.id] || L.pen) === p.id && !dec.consign[L.id]).length;
+    if (n && tot <= 0) errs.push(`${p.name} has no ration yet. Build one on the Rations step.`);
+    else if (n && Math.abs(tot - 100) > 0.5) errs.push(`${p.name}'s ration adds to ${r1(tot)}% of dry matter. It needs to total 100%.`);
+  }
+  if (s.classSync && !st.practice && r >= 2 && r <= s.rounds + 1 && !st.bulls[r]) errs.push(`Load the class market file for round ${r} before ending the period. Your instructor posts it after round ${r - 1} closes.`);
+  const nOn = onFeed(st).length, nSell = Object.keys(dec.consign || {}).length, lot = s.minLot != null ? s.minLot : 10;
+  if (r <= s.rounds && nSell > 0 && nSell < lot && nSell < nOn) errs.push(`Buyers take lots of at least ${lot} head. You've marked ${nSell} to sell: mark at least ${lot}, or none this week.`);
+  if (r === s.rounds + 1) warns.push('This is the final sale: every lamb still on feed will be consigned.');
+  return { errs, warns };
+}
+
+/* ---------- run one feeding period ---------- */
+function commitRound(st, dec) {
+  const s = st.settings, r = st.round, L0 = ledger(st, r), fm = feedMap(s);
+  const rng = makeRng(st.seed + ':round:' + r + ':' + st.fid);
+  const T = st.paths.temps[r - 1];
+  const ev = [];
+  // pens
+  const prevById = {}; for (const p of st.pens) prevById[p.id] = p;
+  const prevRation = id => prevById[id] && rationTotal(prevById[id].ration) > 0 ? prevById[id].ration : (r === 1 ? arrivalDiet() : null);
+  st.pens = dec.pens.map(p => Object.assign({}, p, { prev: prevRation(p.id), prevStarted: prevById[p.id] ? prevById[p.id].started : null }));
+  for (const p of st.pens) {
+    const changed = !p.prev || JSON.stringify(p.prev) !== JSON.stringify(p.ration);
+    p.started = changed ? r : (p.prevStarted || r);
+  }
+  // moves
+  for (const L of onFeed(st)) if (dec.move[L.id]) L.pen = +dec.move[L.id];
+  // management at the start of the period
+  const handled = onFeed(st);
+  if (dec.vaccinate) for (const L of handled) { if (L.vacc < 2) { L.vacc++; L0.health += s.vaccineCost; } }
+  if (dec.implant) for (const L of handled) if (!L.implant) { L.implant = true; L0.health += s.implantCost; }
+  if (dec.shear) for (const L of handled) if (L.shornDay == null) { L.shornDay = L.dof; L0.shearing += s.shearCost; L0.fleece += s.fleeceLb * s.fleecePrice; L.stress = 3; }
+  for (const pid of dec.ultrasound || []) for (const L of handled) if (L.pen === pid) { L.ultra = true; L0.ultrasound += s.ultrasoundCost; }
+  if (dec.move && Object.keys(dec.move).length) for (const L of handled) if (dec.move[L.id]) L.stress = Math.max(L.stress || 0, 1);
+  // consignments: shipped now, priced when the class market settles
+  const final = r === s.rounds + 1;
+  const cons = [];
+  for (const L of onFeed(st)) {
+    const how = final ? (dec.consign[L.id] || dec.finalHow || 'live') : dec.consign[L.id];
+    if (!how) continue;
+    const pen = st.pens.find(p => p.id === L.pen) || st.pens[0];
+    const A = analyze(s, pen.ration);
+    const live = L.bw * LB * (1 - s.shrink);
+    const ft = fatThick(L), dress = dressing(L, A), hcw = L.bw * LB * dress;
+    cons.push({ id: L.id, how, live: r1(live), hcw: r1(hcw), ft: r2(ft), yg: yieldGrade(ft), sick: L.sick > 0, dress: r2(dress * 100), sex: L.sex, dof: L.dof });
+    L.status = 'consigned'; L.soldRound = r; L.saleHow = how;
+  }
+  st.cons[r] = cons;
+  // feed for the period
+  const days = final ? 0 : s.daysPerRound;
+  let dmiPen = {}, gainPen = {};
+  for (let d = 0; d < days; d++) {
+    for (const pen of st.pens) {
+      const lambs = onFeed(st).filter(L => L.pen === pen.id);
+      if (!lambs.length) continue;
+      const newA = analyze(s, pen.ration, k => feedPrice(st, k, r));
+      // a stepped change blends from the old ration over 7 days
+      const prevA = pen.prev ? analyze(s, pen.prev) : null;
+      let A = newA;
+      const dayInto = (r - pen.started) * s.daysPerRound + d;
+      if (pen.step && prevA && pen.started === r && d < 7) { const w = (d + 1) / 7; A = blend(prevA, newA, w); }
+      const penJump = prevA && pen.started === r && d < 7 ? Math.max(0, newA.conc - prevA.conc) * (pen.step ? 0.4 : 1) : 0;
+      const stepF = pen.step && pen.started === r ? 0.4 : 1;
+      // each lamb is measured against the concentrate level it was used to (new arrivals: none; moved lambs: their old pen)
+      const jumpOf = L => L.lastConc == null ? penJump : d < 7 ? Math.max(0, newA.conc - L.lastConc) * stepF : 0;
+      const minDof = Math.min(...lambs.map(L => L.dof)), maxDof = Math.max(...lambs.map(L => L.dof));
+      const mixed = minDof <= 21 && maxDof - minDof >= 10 ? minDof : null;   // new arrivals share the pen with settled lambs
+      const rdpNeed = 0.13 * newA.tdn, rdpFactor = newA.rdp < rdpNeed * 0.9 ? 1 - 0.3 * (1 - newA.rdp / (rdpNeed * 0.9)) : 1;
+      const ctx = { T, adlib: pen.adlib, limit: pen.limit, lasalocid: pen.lasalocid, rdpFactor };
+      const conc = newA.conc;
+      for (const L of lambs) {
+        const dmi = lambDay(L, A, ctx, s);
+        updateBW(L, A);
+        L.dof++; L.dmiTot += dmi;
+        const asFed = dmi * A.asFedPerDM * (1 + s.wastage);
+        const cost = asFed / 907.185 * newA.costAsFed + (pen.lasalocid ? asFed / 907.185 * s.lasalocidPerTon : 0);
+        L.feedCost += cost; L0.feed += cost; L0.yardage += s.yardage;
+        L0.interest += ((L.cost != null ? L.cost : L.inWt * slide(s.buySlide, L.inWt)) + L.feedCost) * s.interest / 365;
+        dmiPen[pen.id] = (dmiPen[pen.id] || 0) + dmi;
+        if (L.sick > 0) L.sick--; if (L.offFeed > 0) L.offFeed--; if (L.stress > 0) L.stress--;
+        health(st, L, newA, { jump: jumpOf(L), pen, T, rng, ev, L0, s, dayInto, mixed });
+        if (d === days - 1 || d >= 6) L.lastConc = conc;
+        if (L.status !== 'feed') continue;
+      }
+    }
+  }
+  for (const L of st.lambs) if (L.status === 'feed') { L.hist.push(r1(L.bw * LB)); L.fatEst = estFat(st, L); }
+  // solo games settle at once; class games when the next market file arrives
+  if (!s.classSync || st.practice) settle(st, r, baseLiveIdx(st, r), null);
+  st.events.push(...ev.map(e => Object.assign({ r }, e)));
+  st.hist.push(roundStats(st, r, dmiPen));
+  st.round = r + 1;
+  arriveLot2(st);
+  return ev;
+}
+function blend(a, b, w) { const o = Object.assign({}, b); for (const k of ['cp', 'rupG', 'tdn', 'ndf', 'starch', 'fat', 'ca', 'p', 's', 'cu', 'mo', 'forage', 'forageNDF', 'conc', 'rdp', 'de', 'me', 'md']) o[k] = a[k] * (1 - w) + b[k] * w; return o; }
+
+/* ---------- health ---------- */
+function health(st, L, A, o) {
+  const { jump, pen, T, rng, ev, L0, s, mixed } = o;
+  const die = (cause) => { L.status = 'dead'; L.cause = cause; L.deadRound = st.round; ev.push({ type: 'death', id: L.id, tag: L.tag, cause }); };
+  const treat = (days, f) => { L.sick = days; L.sickF = f; L.treat++; L0.health += s.treatCost; };
+  // acidosis: concentrate jumps, high starch, too little effective fiber
+  let hz = 0.0005 * Math.exp(0.08 * jump) * (jump > 0 ? 1 : 0.08) * (A.starch > 45 ? 1.5 : 1) * (A.forageNDF < 6 ? 2 : A.forageNDF < 9 ? 1.3 : 1)
+    * (pen.lasalocid ? 0.6 : 1) * (pen.adlib ? 1 : 0.5) * (A.conc > 80 ? 1.5 : 1) * s.riskAcid;
+  if (rng.bern(hz)) {
+    const u = rng.u();
+    if (u < 0.05) return die('acidosis');
+    if (u < 0.30) { treat(7, 0.5); L.offFeed = 7; L.offF = 0.6; if (rng.bern(0.3)) L.chronic = true; ev.push({ type: 'acidosis', id: L.id, tag: L.tag, sev: 'clinical' }); }
+    else { L.offFeed = 5; L.offF = 0.8; ev.push({ type: 'acidosis', id: L.id, tag: L.tag, sev: 'subclinical' }); }
+  }
+  // urinary calculi (wethers): Ca:P, phosphorus, ammonium chloride
+  if (L.sex === 'W') {
+    hz = 0.00025 * (A.caP < 1.5 ? 4 : A.caP < 2 ? 2 : 1) * (A.p > 0.40 ? 1.6 : 1) * (A.nh4cl >= 0.4 ? 0.25 : A.nh4cl >= 0.2 ? 0.6 : 1) * (A.forage < 15 ? 1.3 : 1) * s.riskCalc;
+    if (rng.bern(hz)) { if (rng.bern(0.5)) return die('urinary calculi'); treat(10, 0.5); ev.push({ type: 'calculi', id: L.id, tag: L.tag }); }
+  }
+  // enterotoxemia: high-concentrate diets, protection from CD&T
+  hz = 0.00025 * (A.conc > 60 ? 2 : A.conc > 40 ? 1 : 0.3) * (jump > 0 ? 1.5 : 1) * (L.vacc >= 2 ? 0.08 : L.vacc === 1 ? 0.45 : 1) * s.riskEntero;
+  if (rng.bern(hz)) return die('enterotoxemia');
+  // polioencephalomalacia: dietary sulfur
+  if (A.s > 0.3) { hz = 0.0004 * Math.pow((A.s - 0.3) / 0.1, 2) * s.riskPolio; if (rng.bern(hz)) { if (rng.bern(0.4)) return die('polioencephalomalacia'); treat(7, 0.8); ev.push({ type: 'polio', id: L.id, tag: L.tag }); } }
+  // copper: liver stores build on high-copper diets (molybdenum helps), then a hemolytic crisis, often after stress
+  const cuEff = A.cu / (1 + Math.max(0, A.mo - 1) * 0.3);
+  L.liverCu = Math.max(150, L.liverCu + 0.6 * (cuEff - 9) * s.riskCopper);
+  if (L.liverCu > 900) { hz = 0.002 * (L.liverCu - 900) / 100 * ((L.stress || 0) > 0 ? 3 : 1); if (rng.bern(hz)) return die('copper toxicity'); }
+  // coccidiosis: first four weeks on feed unless the ration carries lasalocid
+  if (L.dof <= 28 && !L.cocci) { hz = 0.002 * (pen.lasalocid ? 0.2 : 1) * s.riskCocci; if (rng.bern(hz)) { L.cocci = 1; if (rng.bern(0.05)) return die('coccidiosis'); treat(14, 0.7); ev.push({ type: 'cocci', id: L.id, tag: L.tag }); } }
+  // respiratory disease: arrival stress, cold on freshly shorn lambs
+  const shornRecent = L.shornDay != null && L.dof - L.shornDay < 21;
+  // settled lambs penned with new arrivals catch what the newcomers bring
+  hz = (L.dof <= 21 ? 0.0015 : 0.0002) * (mixed != null && L.dof >= mixed + 10 ? (L.dof <= 21 ? 1.5 : 4) : 1) * (shornRecent && T < 25 ? 2.5 : 1) * s.riskPneu;
+  if (rng.bern(hz)) { if (rng.bern(0.15)) return die('pneumonia'); treat(10, 0.8); ev.push({ type: 'pneumonia', id: L.id, tag: L.tag }); }
+  if (rng.bern(0.00008)) return die('other');
+}
+
+/* ---------- market settlement ---------- */
+function saleValue(st, c, idx) {
+  const s = st.settings;
+  if (c.how === 'live') return c.live * Math.max(0.2, slide(s.liveSlide, c.live) * idx - fatDock(s, c.yg)) * (c.sick ? 1 - (s.sickDock != null ? s.sickDock : 0.2) : 1);
+  let p = s.gridBase;
+  let wAdj = s.gridWeight[0][1]; for (const w of s.gridWeight) if (c.hcw >= w[0]) wAdj = w[1];
+  p += wAdj + s.gridYG[c.yg - 1] + (c.ft < 0.10 ? s.gridThin : 0);
+  return c.hcw * Math.max(0.5, p) * idx;
+}
+function settle(st, r, idx, b) {
+  if (st.settled[r] != null) return 0;
+  const L = ledger(st, r); let tot = 0;
+  for (const c of st.cons[r] || []) { const v = saleValue(st, c, idx); c.value = r2(v); c.idx = idx; tot += v; const lamb = st.lambs[c.id - 1]; lamb.status = 'sold'; lamb.value = c.value; }
+  L.sales += tot; L.soldHead += (st.cons[r] || []).length; st.settled[r] = idx;
+  return tot;
+}
+
+/* ---------- class rounds through files ---------- */
+function makeSubmission(st) {
+  const r = st.round - 1, c = st.cons[r] || [];
+  return { app: 'bunkcall-sub', v: 1, classCode: st.seed, fid: st.fid, name: st.name, round: r, created: Date.now(),
+    head: c.length, liveLb: r1(c.reduce((t, x) => t + x.live, 0)), hcwLb: r1(c.reduce((t, x) => t + x.hcw, 0)),
+    grid: c.filter(x => x.how === 'grid').length, yg: [1, 2, 3, 4, 5].map(g => c.filter(x => x.yg === g).length), summary: summary(st) };
+}
+function clearingIdx(s, base, supply, classHead) {
+  const expected = Math.max(1, classHead / Math.max(1, s.marketWindow));
+  return r2(clamp(base * (1 - s.elasticity * (supply / expected - 1)), base * 0.85, base * 1.15));
+}
+function buildBulletin(o) {
+  return { app: 'bunkcall-market', v: 1, classCode: o.classCode, round: o.round, issued: Date.now(), deadline: o.deadline || '', note: o.note || '',
+    idx: o.idx, closed: o.round - 1, supply: o.supply, base: o.base };
+}
+function applyBulletin(st, b) {
+  if (!b || b.app !== 'bunkcall-market') throw new Error('This is not a class market file.');
+  if (b.classCode !== st.seed) throw new Error(`This market file is for class ${b.classCode}, but your game is class ${st.seed}.`);
+  if (b.round > st.round) throw new Error(`This file opens round ${b.round}, but you're still in round ${st.round}. End round ${st.round} first.`);
+  if (b.round < st.round) throw new Error(`This file is for round ${b.round}, and you're already in round ${st.round}.`);
+  const paid = settle(st, b.closed, b.idx, b);
+  st.bulls[b.round] = { round: b.round, deadline: b.deadline, note: b.note, idx: b.idx, closed: b.closed, supply: b.supply, base: b.base, paid };
+  return st.bulls[b.round];
+}
+
+/* ---------- reporting ---------- */
+function roundStats(st, r, dmiPen) {
+  const fed = st.lambs.filter(L => L.status === 'feed');
+  const dead = st.lambs.filter(L => L.status === 'dead' && L.deadRound === r).length;
+  const prev = st.hist.length ? st.hist[st.hist.length - 1] : null;
+  const gains = fed.map(L => (L.hist[L.hist.length - 1] - L.hist[L.hist.length - 2]) / st.settings.daysPerRound).filter(v => !isNaN(v));
+  const dmiTot = Object.values(dmiPen).reduce((t, v) => t + v, 0);
+  const days = st.settings.daysPerRound;
+  const gainTot = gains.reduce((t, v) => t + v, 0) * days / LB;
+  return { r, head: fed.length, dead, meanLb: fed.length ? fed.reduce((t, L) => t + L.bw * LB, 0) / fed.length : null,
+    adg: gains.length ? gains.reduce((t, v) => t + v, 0) / gains.length : null,
+    dmi: fed.length ? dmiTot / (fed.length * days) * LB : null, fg: gainTot > 0 && gains.reduce((t, v) => t + v, 0) / gains.length >= 0.1 ? dmiTot / gainTot : null, T: st.paths.temps[r - 1] };
+}
+function summary(st) {
+  const s = st.settings, Ls = st.lambs;
+  const sold = Ls.filter(L => L.status === 'sold' || L.status === 'consigned'), dead = Ls.filter(L => L.status === 'dead');
+  const net = Object.values(st.led).reduce((t, L) => t + ledgerNet(L), 0);
+  const feed = Object.values(st.led).reduce((t, L) => t + L.feed, 0);
+  const gain = Ls.reduce((t, L) => t + (L.status === 'dead' ? 0 : L.bw * LB - L.inWt), 0);
+  const dmi = Ls.reduce((t, L) => t + L.dmiTot, 0) * LB;
+  const dof = Ls.reduce((t, L) => t + L.dof, 0);
+  const bought = Ls.length;
+  return { name: st.name, fid: st.fid, seed: st.seed, round: st.round, finished: st.round > s.rounds + 1, net, perHead: net / bought, bought,
+    deathPct: dead.length / bought * 100, sold: sold.length, adg: dof ? gain / dof : 0, fg: gain > 0 ? dmi / gain : 0, cog: gain > 0 ? feed / gain : 0 };
+}
+
+/* ---------- serialization ---------- */
+function serialize(st) { return JSON.stringify(st); }
+function deserialize(json) {
+  const st = typeof json === 'string' ? JSON.parse(json) : json;
+  if (st.app !== 'bunkcall') throw new Error('This is not a saved feeding game.');
+  st.settings = Object.assign(defaultSettings(), st.settings);
+  st.settings.classSync = false;
+  // games saved while class files were in use: price any lambs still waiting on a market file now
+  for (const r in st.cons) if ((st.cons[r] || []).length && st.settled[r] == null) settle(st, +r, baseLiveIdx(st, +r), null);
+  return st;
+}
+
+/* ---------- least-cost formulation (two-phase simplex) ---------- */
+// minimize c.x subject to rows (a.x  le|ge|eq  b), x >= 0
+function simplexMin(c, rows) {
+  const n = c.length, m = rows.length;
+  const R = rows.map(r => ({ a: r.a.slice(), b: r.b, t: r.t }));
+  for (const r of R) if (r.b < 0) { r.a = r.a.map(v => -v); r.b = -r.b; r.t = r.t === 'le' ? 'ge' : r.t === 'ge' ? 'le' : 'eq'; }
+  let nS = 0, nA = 0; for (const r of R) { if (r.t !== 'eq') nS++; if (r.t !== 'le') nA++; }
+  const W = n + nS + nA, T = [], basis = [], artCols = [];
+  let si = n, ai = n + nS;
+  for (const r of R) {
+    const row = new Array(W + 1).fill(0);
+    for (let j = 0; j < n; j++) row[j] = r.a[j];
+    if (r.t === 'le') { row[si] = 1; basis.push(si); si++; }
+    else if (r.t === 'ge') { row[si] = -1; si++; row[ai] = 1; basis.push(ai); artCols.push(ai); ai++; }
+    else { row[ai] = 1; basis.push(ai); artCols.push(ai); ai++; }
+    row[W] = r.b; T.push(row);
+  }
+  const isArt = new Array(W).fill(false); for (const j of artCols) isArt[j] = true;
+  const pivot = (pr, pc) => {
+    const p = T[pr][pc]; for (let j = 0; j <= W; j++) T[pr][j] /= p;
+    for (let i = 0; i < m; i++) if (i !== pr) { const f = T[i][pc]; if (f !== 0) for (let j = 0; j <= W; j++) T[i][j] -= f * T[pr][j]; }
+    basis[pr] = pc;
+  };
+  const run = (cost, allowArt) => {
+    for (let it = 0; it < 2000; it++) {
+      let enter = -1;
+      for (let j = 0; j < W; j++) {
+        if (!allowArt && isArt[j]) continue;
+        let rc = cost[j]; for (let i = 0; i < m; i++) rc -= cost[basis[i]] * T[i][j];
+        if (rc < -1e-9) { enter = j; break; }      // Bland's rule
+      }
+      if (enter < 0) return 'optimal';
+      let leave = -1, best = Infinity;
+      for (let i = 0; i < m; i++) if (T[i][enter] > 1e-9) { const q = T[i][W] / T[i][enter]; if (q < best - 1e-12 || (Math.abs(q - best) <= 1e-12 && basis[i] < basis[leave])) { best = q; leave = i; } }
+      if (leave < 0) return 'unbounded';
+      pivot(leave, enter);
+    }
+    return 'iterations';
+  };
+  if (nA) {
+    const c1 = new Array(W).fill(0); for (const j of artCols) c1[j] = 1;
+    run(c1, true);
+    let z1 = 0; for (let i = 0; i < m; i++) if (isArt[basis[i]]) z1 += T[i][W];
+    if (z1 > 1e-7) return { status: 'infeasible' };
+    for (let i = 0; i < m; i++) if (isArt[basis[i]]) { for (let j = 0; j < W; j++) if (!isArt[j] && Math.abs(T[i][j]) > 1e-9) { pivot(i, j); break; } }
+  }
+  const c2 = new Array(W).fill(0); for (let j = 0; j < n; j++) c2[j] = c[j];
+  const stt = run(c2, false);
+  if (stt !== 'optimal') return { status: stt };
+  const x = new Array(n).fill(0); for (let i = 0; i < m; i++) if (basis[i] < n) x[basis[i]] = T[i][W];
+  return { status: 'optimal', x, z: x.reduce((t, v, j) => t + v * c[j], 0) };
+}
+// default constraint set for a finishing ration (students edit these)
+function defaultSpec() {
+  return { tdnMin: 72, cpMin: 14.5, caPMin: 2.0, pMin: 0.25, sMax: 0.30, forageMin: 12, ndfMin: 18, fatMax: 6, cuMax: 15, nh4cl: 0.5, saltMin: 0.5,
+    use: { corn: true, barley: true, ddgs: true, sbm: true, hulls: true, alfalfa: true, grass: true, pellet: false, limestone: true, nh4cl: true, sheepmin: true, cattlemin: false, salt: true },
+    minIncl: { sheepmin: 1 }, maxIncl: { ddgs: 25 } };
+}
+// cheapest ration (per ton of dry matter) meeting the spec; returns % of DM by feed
+function leastCost(s, spec, priceOf) {
+  const feeds = s.feeds.filter(f => spec.use[f.key]);
+  if (!feeds.length) return { status: 'nofeeds' };
+  const c = feeds.map(f => (priceOf ? priceOf(f.key) : f.price) / (f.dm / 100));
+  const col = fn => feeds.map(fn), rows = [];
+  rows.push({ a: col(() => 1), b: 1, t: 'eq' });
+  const add = (a, b, t) => rows.push({ a, b, t });
+  if (spec.tdnMin != null && spec.tdnMin !== '') add(col(f => f.tdn), +spec.tdnMin, 'ge');
+  if (spec.cpMin != null && spec.cpMin !== '') add(col(f => f.cp), +spec.cpMin, 'ge');
+  if (spec.caPMin != null && spec.caPMin !== '') add(col(f => f.ca - spec.caPMin * f.p), 0, 'ge');
+  if (spec.pMin != null && spec.pMin !== '') add(col(f => f.p), +spec.pMin, 'ge');
+  if (spec.sMax != null && spec.sMax !== '') add(col(f => f.s), +spec.sMax, 'le');
+  if (spec.forageMin != null && spec.forageMin !== '') add(col(f => f.forage ? 100 : 0), +spec.forageMin, 'ge');
+  if (spec.ndfMin != null && spec.ndfMin !== '') add(col(f => f.ndf), +spec.ndfMin, 'ge');
+  if (spec.fatMax != null && spec.fatMax !== '') add(col(f => f.fat), +spec.fatMax, 'le');
+  if (spec.cuMax != null && spec.cuMax !== '') add(col(f => f.cu), +spec.cuMax, 'le');
+  if (spec.nh4cl && spec.use.nh4cl) add(col(f => f.key === 'nh4cl' ? 100 : 0), +spec.nh4cl, 'eq');
+  if (spec.saltMin && spec.use.salt) add(col(f => f.key === 'salt' ? 100 : 0), +spec.saltMin, 'ge');
+  for (const k in spec.minIncl || {}) if (spec.use[k] && +spec.minIncl[k] > 0) add(col(f => f.key === k ? 100 : 0), +spec.minIncl[k], 'ge');
+  for (const k in spec.maxIncl || {}) if (spec.use[k] && spec.maxIncl[k] !== '' && spec.maxIncl[k] != null) add(col(f => f.key === k ? 100 : 0), +spec.maxIncl[k], 'le');
+  const res = simplexMin(c, rows);
+  if (res.status !== 'optimal') return res;
+  const ration = {};
+  feeds.forEach((f, j) => { const v = Math.round(res.x[j] * 1000) / 10; if (v > 0) ration[f.key] = v; });
+  // rounding can leave the total a little off 100: put the difference on the largest ingredient
+  const tot = Object.values(ration).reduce((t, v) => t + v, 0), big = Object.keys(ration).sort((a, b) => ration[b] - ration[a])[0];
+  if (big) ration[big] = Math.round((ration[big] + 100 - tot) * 10) / 10;
+  return { status: 'optimal', ration, costDM: res.z };
+}
+
+/* ---------- prediction for the ration screen ---------- */
+function predict(st, pen, lambs) {
+  const s = st.settings, A = analyze(s, pen.ration, k => feedPrice(st, k, Math.min(st.round, s.rounds)));
+  if (!lambs.length || A.tot <= 0) return { A };
+  const T = st.paths.temps[Math.min(st.round, s.rounds) - 1];
+  const rdpNeed = 0.13 * A.tdn, rdpFactor = A.rdp < rdpNeed * 0.9 ? 1 - 0.3 * (1 - A.rdp / (rdpNeed * 0.9)) : 1;
+  const avg = { bw: 0, mw: 0, g: 0, im: 0, fat: 0, ff: 0 }; for (const L of lambs) for (const k in avg) avg[k] += L[k] / lambs.length;
+  const proto = lambs[0];
+  const L = Object.assign({}, avg, { sex: lambs.filter(x => x.sex === 'W').length >= lambs.length / 2 ? 'W' : 'E', implant: proto.implant, chronic: false, sick: 0, offFeed: 0, shornDay: proto.shornDay, dof: proto.dof, plane: 0.9, adlibRef: null });
+  const o = {};
+  lambDay(Object.assign({}, L), A, { T, adlib: true, limit: 1, lasalocid: pen.lasalocid, rdpFactor }, s, null);
+  const L2 = Object.assign({}, L); lambDay(L2, A, { T, adlib: true, limit: 1, lasalocid: pen.lasalocid, rdpFactor }, s, null);
+  L2.adlibRef = L2.adlibRef || 0;
+  const L3 = Object.assign({}, L, { plane: L2.plane, adlibRef: L2.adlibRef });
+  lambDay(L3, A, { T, adlib: pen.adlib, limit: pen.limit, lasalocid: pen.lasalocid, rdpFactor }, s, o);
+  const ebwGain = (L3.fat + L3.ff) - (L.fat + L.ff);
+  const adgKg = ebwGain / fillFrac(A);
+  const asFed = o.dmi * A.asFedPerDM * (1 + s.wastage);
+  const costDay = asFed / 907.185 * (A.costAsFed + (pen.lasalocid ? s.lasalocidPerTon : 0));
+  return { A, dmiLb: o.dmi * LB, dmiPct: o.dmi / L.bw * 100, adgLb: adgKg * LB, fg: adgKg > 0 ? o.dmi / adgKg : null, costDay, cog: adgKg > 0 ? costDay / (adgKg * LB) : null,
+    mp: o.mp, mpReq: o.mpm + o.mpg, mpBal: o.mp - o.mpm - o.mpg, limitBy: o.gainP < o.gainE ? 'protein (MP)' : o.limit === 'fill' ? 'rumen fill (NDF)' : 'energy', meMcal: A.me, bwLb: L.bw * LB, T,
+    reqCa: 0.0, reqP: 0.0 };
+}
+
+const SIM = { LB, FEEDS, NUTS, defaultSettings, feedMap, genPaths, analyze, newGame, validate, commitRound, settle, saleValue, slide, ledger, ledgerNet,
+  makeSubmission, buildBulletin, applyBulletin, clearingIdx, summary, serialize, deserialize, predict, onFeed, fatPct, fatThick, yieldGrade, dressing,
+  feedPrice, feedIdx, baseLiveIdx, estFat, fatDock, defaultRation, arrivalDiet, PRICE_YEARS, applyPriceYear, rationTotal, makeRng, simplexMin, leastCost, defaultSpec };
+if (typeof module !== 'undefined' && module.exports) module.exports = SIM; else global.FEED = SIM;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>(function () {
+'use strict';
+const F = window.FEED, LB = F.LB;
+/* ============ helpers ============ */
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (v, dp = 0) => v == null || isNaN(v) ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+const sgn = (v, dp) => v == null || isNaN(v) ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(dp);
+const money = v => v == null || isNaN(v) ? '—' : (v < 0 ? '−$' : '$') + Math.round(Math.abs(v)).toLocaleString('en-US');
+const money2 = v => v == null || isNaN(v) ? '—' : (v < 0 ? '−$' : '$') + Math.abs(v).toFixed(2);
+const pct = (v, dp = 0) => v == null || isNaN(v) ? '—' : (v * 100).toFixed(dp) + '%';
+const sum = (a, f) => a.reduce((t, x) => t + f(x), 0);
+const SERIES = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)', 'var(--s6)', 'var(--s7)', 'var(--s8)'];
+const APP_NAME = (document.title || 'MSU Lamb Feeding Simulator').trim();
+const LS_KEY = 'bunkcall.save.v1', CLS_KEY = 'bunkcall.class', INSTR_KEY = 'bunkcall.instructor';
+const LZ = window.LZString || null;
+const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'game';
+let st = null;
+const UI = { view: 'lot', step: 'report', toast: null, busy: null, sort: {}, newForm: null, cls: null, subs: [], idxOverride: null, bDeadline: '', bNote: '', classRows: [], pasteSave: '', penTab: null };
+
+/* ============ dates ============ */
+// first day on feed comes from the class settings (YYYY-MM-DD)
+function startDate() { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(st.settings.startDate || '')); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(2026, 8, 15); }
+function periodDates(r) {
+  const d = st.settings.daysPerRound, START = startDate(), a = new Date(START.getTime() + (r - 1) * d * 864e5), b = new Date(a.getTime() + (d - 1) * 864e5);
+  const f = x => x.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return f(a) + '–' + f(b);
+}
+const R = () => st.round, S = () => st.settings;
+const finalRound = () => st.round === S().rounds + 1;
+const over = () => st.round > S().rounds + 1;
+const classMode = () => false;   // the feeding game is self-paced
+const pending = () => Object.keys(st.cons).some(r => (st.cons[r] || []).length && st.settled[r] == null);
+
+/* ============ decisions ============ */
+// suggested finishing-ration targets, no ingredients chosen
+function defaultTargets() { const t = F.defaultSpec(); t.use = {}; delete t.minIncl; delete t.maxIncl; return t; }
+// feed:gain is meaningless when live-weight gain is near zero (gut fill shifts after a ration change)
+const fgOf = h => h && h.fg != null && h.adg != null && h.adg >= 0.1 ? h.fg : null;
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+function dec() {
+  if (!st.pending || st.pending.r !== st.round) {
+    st.pending = { r: st.round, pens: clone(st.pens).map(p => { delete p.prev; delete p.prevStarted; delete p.started; p.spec = Object.assign(defaultTargets(), p.spec || {}); p.spec.use = p.spec.use || {}; return p; }),
+      move: {}, consign: {}, vaccinate: false, implant: false, shear: false, ultrasound: [], finalHow: 'live' };
+  }
+  // saves from earlier versions may carry pens without targets or ingredient ticks
+  // one pen: saves from versions with several pens fold everything into the first pen
+  if (st.pending.pens.length > 1) { const keep = st.pending.pens[0].id; st.pending.pens = [st.pending.pens[0]]; for (const L of F.onFeed(st)) if (L.pen !== keep) st.pending.move[L.id] = keep; }
+  for (const p of st.pending.pens) {
+    if (!p.spec || !('tdnMin' in p.spec)) p.spec = Object.assign(defaultTargets(), p.spec || {});
+    if (!p.spec.use) p.spec.use = {};
+    if (!p.ration) p.ration = {};
+  }
+  return st.pending;
+}
+const penOf = L => (dec().move[L.id] ? +dec().move[L.id] : L.pen);
+const lambsIn = pid => F.onFeed(st).filter(L => penOf(L) === pid && !dec().consign[L.id]);
+
+/* ============ persistence ============ */
+let saveTimer = null;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { try { const j = F.serialize(st); localStorage.setItem(LS_KEY, LZ ? LZ.compressToUTF16(j) : j); st._saved = Date.now(); } catch (e) { st._saved = -1; } renderTop(); }, 250);
+}
+function loadLocal() { try { const raw = localStorage.getItem(LS_KEY); if (!raw) return null; return F.deserialize(raw[0] === '{' ? raw : LZ.decompressFromUTF16(raw)); } catch (e) { return null; } }
+function packState() { const s = F.serialize(st); return LZ ? 'LZ:' + LZ.compressToBase64(s) : 'B64:' + btoa(unescape(encodeURIComponent(s))); }
+function unpackState(code) {
+  code = code.trim(); let json = null;
+  if (code.startsWith('LZ:')) { if (!LZ) throw new Error('This save is compressed and the decompression library did not load. Check your connection and reload.'); json = LZ.decompressFromBase64(code.slice(3)); }
+  else if (code.startsWith('B64:')) json = decodeURIComponent(escape(atob(code.slice(4))));
+  if (!json) throw new Error('That save code could not be read.');
+  return F.deserialize(json);
+}
+let downloadsCap = null;
+if (window.claude && window.claude.use) window.claude.use('downloads').then(d => { downloadsCap = d; }).catch(() => {});
+async function offerFile(filename, text) {
+  if (downloadsCap) { try { await downloadsCap.save({ filename, data: text }); toast('Saved ' + filename); return; } catch (e) { if (e && e.code === 'declined') return; } }
+  try { const url = URL.createObjectURL(new Blob([text], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); toast('Download started. If nothing downloads, use Copy save code instead.'); }
+  catch (e) { toast('Downloads are blocked here. Use Copy save code instead.'); }
+}
+async function copyText(text, label) {
+  try { await navigator.clipboard.writeText(text); toast(label + ' copied'); }
+  catch (e) { const ta = document.getElementById('copyFallback'); if (ta) { ta.hidden = false; ta.value = text; ta.select(); } toast('Copy was blocked. The code is selected below; press Ctrl+C or ⌘C.'); }
+}
+function toast(msg) { UI.toast = msg; renderOverlays(); clearTimeout(toast._t); toast._t = setTimeout(() => { UI.toast = null; renderOverlays(); }, 4000); }
+const tick = () => new Promise(r => setTimeout(r, 30));
+async function busy(msg, fn) { UI.busy = msg; renderOverlays(); await tick(); try { await fn(); } finally { UI.busy = null; renderOverlays(); } }
+
+/* ============ instructor access ============ */
+function instructorOn() {
+  if (location.hash === '#instructor') { try { localStorage.setItem(INSTR_KEY, '1'); } catch (e) {} return true; }
+  try { return localStorage.getItem(INSTR_KEY) === '1'; } catch (e) { return false; }
+}
+function hideInstructor() { try { localStorage.removeItem(INSTR_KEY); } catch (e) {} if (location.hash === '#instructor') history.replaceState(null, '', location.pathname + location.search); }
+window.addEventListener('hashchange', () => { if (location.hash === '#instructor') { UI.view = 'instructor'; render(); } });
+
+/* ============ charts ============ */
+const CH = {}; let chN = 0;
+function niceTicks(lo, hi, n) {
+  const span = hi - lo, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0))), r = step0 / mag;
+  const step = (r >= 5 ? 10 : r >= 2 ? 5 : r >= 1 ? 2 : 1) * mag;
+  const a = Math.floor(lo / step) * step, b = Math.ceil(hi / step) * step, out = [];
+  for (let v = a; v <= b + step / 2; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+function chart(o) {
+  // o: {title, sub, xs:[labels], series:[{name, v:[], color, dash}], yFmt, bars, zero, h}
+  const id = 'ch' + (chN++), W = 330, H = o.h || 170, m = { l: 46, r: 12, t: 10, b: 24 };
+  const all = o.series.flatMap(s => s.v.filter(v => v != null && !isNaN(v)));
+  let head = `<div class="ttl">${esc(o.title)}</div>${o.sub ? `<div class="sub">${esc(o.sub)}</div>` : ''}`;
+  if (!all.length) return `<div class="chart">${head}<p class="muted small">No data yet.</p></div>`;
+  let lo = Math.min(...all), hi = Math.max(...all);
+  if (o.zero || o.bars) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+  if (hi - lo < 1e-9) { if (Math.abs(hi) < 1e-9) { lo = 0; hi = 1; } else { hi += Math.abs(hi) * 0.1; lo -= Math.abs(lo) * 0.1; } }
+  const ticks = niceTicks(lo, hi, 4); lo = ticks[0]; hi = ticks[ticks.length - 1];
+  const tstep = ticks.length > 1 ? ticks[1] - ticks[0] : 1, tdp = Math.max(0, -Math.floor(Math.log10(tstep) + 1e-9));
+  const tf = o.kind === 'pct' ? (v => (v * 100).toFixed(Math.max(0, tdp - 2)) + '%') : o.kind === 'money' ? (v => money(v)) : o.kind === 'signed' ? (v => sgn(v, tdp)) : (v => fmt(v, tdp));
+  const n = o.xs.length, pw = W - m.l - m.r;
+  const X = i => o.bars ? m.l + (i + 0.5) * pw / n : m.l + (n <= 1 ? pw / 2 : i * pw / (n - 1));
+  const Y = v => m.t + (hi - v) * (H - m.t - m.b) / (hi - lo);
+  const yf = o.yFmt || (v => fmt(v, 1));
+  let svg = '';
+  for (const t of ticks) svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(t)}" y2="${Y(t)}" style="stroke:var(--line);stroke-width:${t === 0 && lo < 0 ? 1.4 : 1}"/><text x="${m.l - 6}" y="${Y(t) + 3.5}" text-anchor="end" style="fill:var(--muted);font-size:10px;font-family:var(--font-data)">${esc(tf(t))}</text>`;
+  const every = Math.max(1, Math.ceil(n / 7));
+  o.xs.forEach((x, i) => { if ((n - 1 - i) % every === 0) svg += `<text x="${X(i)}" y="${H - 6}" text-anchor="middle" style="fill:var(--muted);font-size:10px;font-family:var(--font-data)">${esc(x)}</text>`; });
+  o.series.forEach((s, k) => {
+    const col = s.color || SERIES[k];
+    if (o.bars) {
+      const bw = Math.max(4, pw / n * 0.62);
+      s.v.forEach((v, i) => { if (v == null) return; const y0 = Y(0), y1 = Y(v); svg += `<rect x="${X(i) - bw / 2}" y="${Math.min(y0, y1)}" width="${bw}" height="${Math.max(1, Math.abs(y1 - y0))}" rx="2" style="fill:${v < 0 ? 'var(--bad)' : col}"/>`; });
+      return;
+    }
+    let d = '', pen = false;
+    s.v.forEach((v, i) => { if (v == null || isNaN(v)) { pen = false; return; } d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); pen = true; });
+    svg += `<path d="${d}" style="fill:none;stroke:${col};stroke-width:2;stroke-linejoin:round;stroke-linecap:round${s.dash ? ';stroke-dasharray:5 4' : ''}"/>`;
+    s.v.forEach((v, i) => { if (v == null || isNaN(v)) return; const iso = (i === 0 || s.v[i - 1] == null) && (i === s.v.length - 1 || s.v[i + 1] == null); if (iso) svg += `<circle cx="${X(i)}" cy="${Y(v)}" r="3" style="fill:${col}"/>`; });
+    let li = -1; s.v.forEach((v, i) => { if (v != null && !isNaN(v)) li = i; });
+    if (li >= 0) svg += `<circle cx="${X(li)}" cy="${Y(s.v[li])}" r="3.5" style="fill:${col};stroke:var(--surface);stroke-width:2"/>`;
+  });
+  svg += `<line class="hl" x1="0" x2="0" y1="${m.t}" y2="${H - m.b}" style="stroke:var(--ink-2);stroke-width:1;visibility:hidden"/>`;
+  svg += `<rect x="${m.l}" y="${m.t}" width="${pw}" height="${H - m.t - m.b}" style="fill:transparent" data-hover="${id}"/>`;
+  CH[id] = { o, X, W, n, yf };
+  const legend = o.series.length > 1 ? `<div class="legend">${o.series.map((s, k) => `<span><i class="${s.dash ? 'dash' : ''}" style="background:${s.color || SERIES[k]};color:${s.color || SERIES[k]}"></i>${esc(s.name)}</span>`).join('')}</div>` : '';
+  return `<div class="chart" data-chart="${id}">${head}<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.title)}">${svg}</svg>${legend}<div class="tip" hidden></div></div>`;
+}
+document.addEventListener('pointermove', e => {
+  const r = e.target.closest && e.target.closest('[data-hover]');
+  document.querySelectorAll('.chart .tip:not([hidden])').forEach(t => { if (!r || t.parentElement.dataset.chart !== r.dataset.hover) { t.hidden = true; const hl = t.parentElement.querySelector('.hl'); if (hl) hl.style.visibility = 'hidden'; } });
+  if (!r) return;
+  const c = CH[r.dataset.hover]; if (!c) return;
+  const svg = r.ownerSVGElement, box = svg.getBoundingClientRect(), vx = (e.clientX - box.left) / box.width * c.W;
+  let best = 0, bd = 1e9; for (let i = 0; i < c.n; i++) { const d = Math.abs(c.X(i) - vx); if (d < bd) { bd = d; best = i; } }
+  const wrap = svg.parentElement, tip = wrap.querySelector('.tip'), hl = svg.querySelector('.hl');
+  hl.setAttribute('x1', c.X(best)); hl.setAttribute('x2', c.X(best)); hl.style.visibility = 'visible';
+  tip.innerHTML = `<b>${esc(c.o.xs[best])}</b>` + c.o.series.map(s => `<br>${c.o.series.length > 1 ? esc(s.name) + ': ' : ''}${s.v[best] == null ? '—' : esc(c.yf(s.v[best]))}`).join('');
+  tip.hidden = false;
+  const px = c.X(best) / c.W * box.width, wr = wrap.getBoundingClientRect();
+  tip.style.left = Math.min(Math.max(0, px + (box.left - wr.left) - tip.offsetWidth / 2), wr.width - tip.offsetWidth) + 'px';
+  tip.style.top = (box.top - wr.top + 4) + 'px';
+});
+
+
+/* ============ sortable tables ============ */
+function sortRows(key, rows, fns, def) {
+  const s = UI.sort[key] || def || { k: Object.keys(fns)[0], dir: 1 };
+  const f = fns[s.k] || Object.values(fns)[0];
+  return rows.slice().sort((a, b) => { const va = f(a), vb = f(b); return (va < vb ? -1 : va > vb ? 1 : 0) * s.dir; });
+}
+function thS(key, k, label, num, title, def) {
+  const s = UI.sort[key] || def || {}, on = s.k === k;
+  return `<th class="${num ? 'num' : ''}" data-act="sort" data-tbl="${key}" data-k="${k}" title="${esc(title || '')}" ${on ? `aria-sort="${s.dir > 0 ? 'ascending' : 'descending'}"` : ''}>${label}${on ? (s.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+}
+
+/* ============ top bar ============ */
+// what the lambs on feed (and any shipped but unpaid) would bring at this period's base live price
+function inventory() {
+  const s = S(), idx = F.baseLiveIdx(st, Math.min(R(), s.rounds + 1));
+  let v = 0;
+  for (const L of F.onFeed(st)) v += estValue(L, idx);
+  for (const r in st.cons) if (st.settled[r] == null) for (const c of st.cons[r]) v += F.saleValue(st, c, idx);
+  return v;
+}
+function netSoFar() { return Object.values(st.led).reduce((t, L) => t + F.ledgerNet(L), 0); }
+function renderTop() {
+  const el = document.getElementById('top'); if (!el || !st) return;
+  const views = [['lot', 'Feedlot'], ['lambs', 'Lambs'], ['trends', 'Trends'], ['game', 'Game & saves']].concat(instructorOn() ? [['instructor', 'Instructor']] : [], [['guide', 'Guide']]);
+  const nOn = F.onFeed(st).length;
+  el.innerHTML = `<div class="brand"><h1>${esc(APP_NAME)}</h1><span class="flock">${esc(st.name)} · class ${esc(st.seed)}</span></div>
+  <nav class="nav" aria-label="Sections">${views.map(([k, l]) => `<button data-act="view" data-v="${k}" ${UI.view === k ? 'aria-current="page"' : ''}>${l}</button>`).join('')}</nav>
+  <div class="season-pill">
+    <div class="kv"><b>${over() ? 'Closed out' : finalRound() ? 'Final sale' : 'Period ' + R() + '/' + S().rounds}</b><span>${over() ? 'all lambs marketed' : periodDates(Math.min(R(), S().rounds + 1))}</span></div>
+    <div class="kv"><b>${nOn}</b><span>lambs on feed</span></div>
+    <div class="kv"><b class="${netSoFar() < 0 ? 'unf' : ''}">${money(netSoFar())}</b><span>cash so far${pending() ? ' (sales pending)' : ''}</span></div>
+    ${over() ? '' : (() => { const v = netSoFar() + inventory(); return `<div class="kv"><b class="${v < 0 ? 'unf' : ''}">${money(v)}</b><span>if all sold today</span></div>`; })()}
+    <div class="kv"><b>${st._saved === -1 ? 'not saved' : st._saved ? 'saved' : '…'}</b><span>autosave</span></div>
+  </div>`;
+}
+
+/* ============ feedlot steps ============ */
+const STEPS = [
+  ['report', 'Pen report', 'Weights, intake, health'],
+  ['ration', 'Rations', 'Formulate and check'],
+  ['health', 'Health & handling', 'Vaccines, implants, shearing'],
+  ['market', 'Market', 'Pick lambs to sell'],
+  ['commit', 'End the period', 'Check and feed']
+];
+function renderLot() {
+  if (over() && !pending()) return `<div class="shell wide"><main class="main">${renderCloseout()}</main></div>`;
+  if (over()) return `<div class="shell wide"><main class="main">${renderAwaiting()}</main></div>`;
+  const steps = finalRound() ? STEPS.filter(s => ['report', 'market', 'commit'].includes(s[0])) : STEPS;
+  if (!steps.some(s => s[0] === UI.step)) UI.step = 'report';
+  const rail = `<nav class="rail" aria-label="Period steps"><div class="yr">${finalRound() ? 'Final sale' : 'Period ' + R()}</div>${steps.map(([k, t, s], i) =>
+    `<button data-act="step" data-s="${k}" ${UI.step === k ? 'aria-current="step"' : ''}><span class="n">${i + 1}</span><span class="t">${t}<small>${s}</small></span></button>`).join('')}</nav>`;
+  const body = { report: renderReport, ration: renderRation, health: renderHealth, market: renderMarket, commit: renderCommit }[UI.step]();
+  const i = steps.findIndex(s => s[0] === UI.step);
+  const nav = `<div class="row">${i > 0 ? `<button class="btn" data-act="step" data-s="${steps[i - 1][0]}">← ${steps[i - 1][1]}</button>` : ''}<span class="spacer"></span>${i < steps.length - 1 ? `<button class="btn primary" data-act="step" data-s="${steps[i + 1][0]}">${steps[i + 1][1]} →</button>` : ''}</div>`;
+  return `<div class="shell">${rail}<main class="main">${body}${nav}</main></div>`;
+}
+
+/* ---------- money ---------- */
+function ledgerRows(L) {
+  return [['Lamb sales' + (L.soldHead ? ` (${L.soldHead} head)` : ''), L.sales], ['Fleeces sold', L.fleece], ['Feeder lambs purchased', -L.purchase], ['Feed', -L.feed], ['Yardage', -L.yardage],
+    ['Vaccines, implants, treatments', -L.health], ['Shearing', -L.shearing], ['Ultrasound', -L.ultrasound], ['Interest on lambs and feed', -L.interest]];
+}
+function ledgerTable(Ls, label) {
+  const tot = {}; for (const L of Ls) for (const k in L) if (typeof L[k] === 'number') tot[k] = (tot[k] || 0) + L[k];
+  const rows = ledgerRows(tot).filter(r => Math.abs(r[1]) > 0.5);
+  const net = F.ledgerNet(Object.assign({ sales: 0, fleece: 0, purchase: 0, feed: 0, yardage: 0, health: 0, shearing: 0, interest: 0, ultrasound: 0 }, tot));
+  return `<table class="ledger"><tbody>${rows.map(r => `<tr><td>${r[0]}</td><td class="num ${r[1] < 0 ? 'unf' : ''}">${money(r[1])}</td></tr>`).join('')}
+    <tr class="total"><td>${label}</td><td class="num ${net < 0 ? 'unf' : ''}">${money(net)}</td></tr></tbody></table>`;
+}
+
+/* ---------- 1. report ---------- */
+const CAUSE = { acidosis: 'acidosis', 'urinary calculi': 'urinary calculi', enterotoxemia: 'enterotoxemia', polioencephalomalacia: 'polioencephalomalacia', 'copper toxicity': 'copper toxicity', coccidiosis: 'coccidiosis', pneumonia: 'pneumonia', other: 'other causes' };
+function classBanner() {
+  if (!classMode()) return '';
+  const r = R(), b = st.bulls[r], sub = st.subs[r - 1];
+  let h = '';
+  if (sub) h += `<div class="msg ${sub.saved ? 'ok' : 'warn'}"><span class="ic">${sub.saved ? '✓' : '!'}</span><p><b>Hand in your period ${sub.round} submission.</b> It reports the lambs you consigned so the class market can be cleared. Save it and upload it where your instructor asked.</p><button class="btn ${sub.saved ? '' : 'primary'} sm" data-act="savesub" data-r="${sub.round}">${sub.saved ? 'Save again' : 'Save submission file'}</button></div>`;
+  if (r >= 2) {
+    if (b) h += `<div class="msg ok"><span class="ic">✓</span><p>Period ${r} market file loaded.${b.deadline ? ` <b>Deadline: ${esc(b.deadline)}.</b>` : ''}${b.note ? ' ' + esc(b.note) : ''} Lambs sold in period ${b.closed} cleared at <b>${Math.round(b.idx * 100)}%</b> of the base price${b.supply != null ? ` (${b.supply} head sold across the class)` : ''}${b.paid ? `; your sales: ${money(b.paid)}` : ''}.</p></div>`;
+    else h += `<div class="msg warn"><span class="ic">!</span><p>${over() ? `Load the final market file from your instructor. It prices your last lambs and closes out the pen.` : `Load the period ${r} market file from your instructor. It prices the lambs you sold last period and opens this period. You can plan everything now, but you can't end the period until it's loaded.`}</p><label class="btn sm" style="cursor:pointer">Load market file<input type="file" id="bullFile" accept=".json,application/json" hidden></label></div>`;
+  }
+  return h;
+}
+function renderReport() {
+  const r = R(), h = st.hist[st.hist.length - 1], ev = st.events.filter(e => e.r === r - 1);
+  const deaths = ev.filter(e => e.type === 'death'), cases = {};
+  for (const e of ev) if (e.type !== 'death') cases[e.type] = (cases[e.type] || 0) + 1;
+  const dc = {}; for (const e of deaths) dc[e.cause] = (dc[e.cause] || 0) + 1;
+  const T = st.paths.temps[Math.min(r, S().rounds) - 1];
+  const intro = r === 1 ? `<div class="msg info"><span class="ic">i</span><p>You've bought ${S().head} feeder lambs off the Billings sale at about ${S().arrivalLb} lb and have ${S().rounds} feeding periods of ${S().daysPerRound} days to finish and market them. Each period, set the ration, handle health, and decide which lambs to sell. They came in off grass and are on grass hay at the yard. No ration has been set for them: on the Rations step, choose the ingredients and build the ration yourself. Ration changes and market timing drive most of the profit or loss. The Guide tab explains the nutrition model.</p></div>`
+ : '';
+  const pens = [st.pens[0]].map(p => {
+    const ls = F.onFeed(st);
+    const adg = ls.length && ls[0].hist.length > 1 ? sum(ls, L => (L.hist[L.hist.length - 1] - L.hist[L.hist.length - 2])) / ls.length / S().daysPerRound : null;
+    return `<tr><td class="num">${ls.length}</td><td class="num">${ls.length ? fmt(sum(ls, L => L.bw * LB) / ls.length, 1) : '—'}</td><td class="num">${fmt(adg, 2)}</td><td class="num">${ls.length ? fmt(sum(ls, L => L.fatEst) / ls.length, 2) : '—'}</td><td class="num">${ls.filter(L => L.chronic).length}</td></tr>`;
+  }).join('');
+  return `<div class="head"><div><span class="eyebrow">${finalRound() ? 'Final sale' : 'Period ' + r + ' of ' + S().rounds + ' · ' + periodDates(r)}</span><h2>${r === 1 ? 'Lambs on arrival' : 'Pen report'}</h2>
+  <p>${r === 1 ? 'Your lambs have been weighed in and are settling in on grass hay.' : `Results of period ${r - 1}. Weights are full live weights taken at the end of the period.`} Expected mean temperature this period: ${T}°F.</p></div></div>
+  ${intro}${classBanner()}
+  ${h ? `<div class="stats">
+    <div class="stat"><b>${h.head}</b><span>lambs on feed</span></div>
+    <div class="stat"><b>${fmt(h.meanLb, 1)} lb</b><span>mean weight</span></div>
+    <div class="stat"><b>${fmt(h.adg, 2)} lb</b><span>ADG last period</span></div>
+    <div class="stat"><b>${fmt(h.dmi, 2)} lb</b><span>DM intake per head per day (${h.meanLb ? fmt(h.dmi / h.meanLb * 100, 1) : '—'}% of BW)</span></div>
+    <div class="stat"><b>${fmt(fgOf(h), 2)}</b><span>feed:gain, DM basis${fgOf(h) == null && h.adg != null && h.adg < 0.1 ? ' (not shown: almost no live-weight gain this period)' : ''}</span></div>
+    <div class="stat"><b>${h.dead}</b><span>deaths last period</span></div>
+  </div>` : ''}
+  <div class="grid2">
+    <section class="panel"><h3>The pen now</h3><table><thead><tr><th class="num">Head</th><th class="num">Mean lb</th><th class="num">ADG</th><th class="num">Est. fat, in</th><th class="num">Poor doers</th></tr></thead><tbody>${pens}</tbody></table></section>
+    <section class="panel stack"><h3>Health last period</h3>
+      ${ev.length ? `${deaths.length ? `<p><b>${deaths.length} death${deaths.length === 1 ? '' : 's'}:</b> ${Object.entries(dc).map(([c, n]) => `${n} ${CAUSE[c] || c}`).join(', ')}.</p>` : '<p>No deaths.</p>'}
+        ${Object.keys(cases).length ? `<p><b>Treated or affected:</b> ${Object.entries(cases).map(([c, n]) => `${n} ${({ acidosis: 'acidosis (off feed)', calculi: 'urinary calculi', polio: 'polio', cocci: 'coccidiosis', pneumonia: 'pneumonia' })[c] || c}`).join(', ')}.</p>` : ''}` : `<p>${r === 1 ? 'No health events yet.' : 'A quiet period: no deaths or treatments.'}</p>`}
+    </section>
+  </div>
+  <section class="panel"><h3>Money so far</h3>${ledgerTable(Object.values(st.led), 'Net so far')}${pending() ? '<p class="small muted" style="margin-top:8px">Lambs consigned in a period are paid when the class market file for the next period is loaded.</p>' : ''}</section>`;
+}
+
+/* ---------- 2. rations ---------- */
+const NUTROWS = [
+  ['tdn', 'TDN', '%', 1, 'tdnMin', 'min'], ['me', 'ME', 'Mcal/kg', 2], ['cp', 'Crude protein', '%', 1, 'cpMin', 'min'], ['rup', 'RUP', '% of CP', 0], ['rdp', 'RDP', '%', 1],
+  ['ndf', 'NDF', '%', 1, 'ndfMin', 'min'], ['forage', 'Forage', '% of DM', 1, 'forageMin', 'min'], ['conc', 'Concentrate', '% of DM', 1], ['starch', 'Starch', '%', 1], ['fat', 'Fat', '%', 1, 'fatMax', 'max'],
+  ['ca', 'Calcium', '%', 2], ['p', 'Phosphorus', '%', 2, 'pMin', 'min'], ['caP', 'Ca:P', '', 2, 'caPMin', 'min'], ['s', 'Sulfur', '%', 2, 'sMax', 'max'], ['cu', 'Copper', 'ppm', 1, 'cuMax', 'max'], ['cuMo', 'Cu:Mo', '', 1],
+  ['nh4cl', 'Ammonium chloride', '% of DM', 2, 'nh4cl', 'eq']
+];
+function renderRation() {
+  const d = dec(), s = S();
+  if (!UI.penTab || !d.pens.some(p => p.id === UI.penTab)) UI.penTab = d.pens[0].id;
+  const p = d.pens.find(p => p.id === UI.penTab), lambs = lambsIn(p.id);
+  const price = k => F.feedPrice(st, k, R());
+  const A = F.analyze(s, p.ration, price), pr = F.predict(st, p, lambs.length ? lambs : F.onFeed(st));
+  const tot = Object.values(p.ration).reduce((t, v) => t + (+v || 0), 0);
+  const feedRows = s.feeds.map(f => {
+    const v = p.ration[f.key] != null ? p.ration[f.key] : '';
+    const asFedShare = v && A.asFedPerDM ? (+v / 100) / (f.dm / 100) / A.asFedPerDM * 100 : 0;
+    const on = !!(p.spec.use[f.key] || +v > 0);
+    return `<tr class="${on ? 'sel' : ''}"><td><label class="inline"><input type="checkbox" data-act="use" data-k="${f.key}" ${on ? 'checked' : ''} aria-label="Use ${esc(f.name)}"> ${esc(f.name)}</label></td>
+      <td class="num mono">$${fmt(price(f.key), 0)}</td><td class="num mono">${f.dm}</td>
+      <td><input type="number" step="0.5" min="0" max="100" data-act="incl" data-k="${f.key}" value="${v}" aria-label="${esc(f.name)}, percent of dry matter" style="width:5em"></td>
+      <td class="num mono">${asFedShare ? asFedShare.toFixed(1) : ''}</td></tr>`;
+  }).join('');
+  const nutRows = NUTROWS.map(([k, label, unit, dp, sk, kind]) => {
+    const v = A[k], target = sk ? p.spec[sk] : null;
+    let ok = null;
+    if (target !== null && target !== '' && target != null && A.tot > 0) ok = kind === 'min' ? v >= +target - 1e-6 : kind === 'max' ? v <= +target + 1e-6 : Math.abs(v - target) < 0.05;
+    return `<tr><td>${label}${unit ? ` <span class="muted small">${unit}</span>` : ''}</td><td class="num mono">${A.tot > 0 ? fmt(v, dp) : '—'}</td>
+      <td>${sk ? `<span class="small muted">${kind === 'min' ? '≥' : kind === 'max' ? '≤' : '='}</span> <input type="number" step="${dp >= 2 ? 0.01 : 0.5}" data-act="spec" data-k="${sk}" value="${target != null ? target : ''}" style="width:4.6em;padding-left:4px;padding-right:2px" aria-label="${label} target">` : ''}</td>
+      <td style="padding-left:2px;padding-right:4px">${ok === null ? '' : ok ? '<span class="badge good">ok</span>' : '<span class="badge bad">off</span>'}</td></tr>`;
+  }).join('');
+  const T = pr.T;
+  return `<div class="head"><div><span class="eyebrow">Period ${R()} · step 2</span><h2>Rations</h2>
+  <p>Formulate the ration on a dry-matter basis. Prices are this period's delivered prices per ton as fed. Tick the ingredients you want to use and enter each one's share of the dry matter; the mix must total 100%. The analysis updates as you type and is checked against the targets on the right. The prediction is for the pen's average lamb at steady state; the first week after a change will differ as gut fill and intake adjust.</p></div></div>
+  <div class="ration-grid">
+  <section class="panel stack"><div class="row"><h3>Ration</h3><span class="spacer"></span><span class="mono small ${Math.abs(tot - 100) > 0.5 ? 'unf' : ''}">${fmt(tot, 1)}% of DM</span></div>
+    <div class="tframe" style="max-height:none"><table><thead><tr><th>Ingredient <span class="muted small">(tick the ones you'll use)</span></th><th class="num">$/ton</th><th class="num">DM %</th><th>% of DM</th><th class="num">% as fed</th></tr></thead><tbody>${feedRows}</tbody></table></div>
+    <div class="row"><button class="btn sm" data-act="normalize" ${tot > 0 ? '' : 'disabled'}>Scale to 100%</button><button class="btn sm" data-act="clearration">Clear</button><button class="btn sm" data-act="specdefault">Default targets</button></div>
+  </section>
+  <section class="panel stack"><h3>Analysis (DM basis)</h3><p class="small muted">Targets start at suggested values for finishing lambs (TDN from NRC 1985: 72–77% for 66–110 lb lambs). Change them to your own, or clear one to stop checking it.</p>
+    <div class="tframe" style="max-height:none"><table><thead><tr><th>Nutrient</th><th class="num">Ration</th><th>Target</th><th></th></tr></thead><tbody>${nutRows}
+      <tr><td>Cost, $/ton as fed</td><td class="num mono">${A.tot > 0 ? money(A.costAsFed) : '—'}</td><td class="small muted" colspan="2" style="white-space:normal">${A.tot > 0 ? money(A.costDM) + '/ton DM<br>' + fmt(A.dmPct, 1) + '% DM as fed' : ''}</td></tr></tbody></table></div>
+  </section></div>
+  <section class="panel stack"><h3>Feeding and predicted performance</h3>
+    <div class="row">
+      <div class="seg" role="group" aria-label="Feeding"><button data-act="adlib" data-v="1" aria-pressed="${p.adlib}">Full feed (ad lib)</button><button data-act="adlib" data-v="0" aria-pressed="${!p.adlib}">Limit fed</button></div>
+      ${p.adlib ? '' : `<label class="inline">at <input type="number" min="50" max="100" step="1" data-act="limit" value="${Math.round(p.limit * 100)}"> % of ad lib intake</label>`}
+      <label class="inline"><input type="checkbox" data-act="lasalocid" ${p.lasalocid ? 'checked' : ''}> Lasalocid in the ration (+${money2(s.lasalocidPerTon)}/ton)</label>
+      <label class="inline"><input type="checkbox" data-act="stepup" ${p.step ? 'checked' : ''}> Step into a new ration over 7 days</label>
+    </div>
+    ${pr.dmiLb != null ? `<div class="stats">
+      <div class="stat"><b>${fmt(pr.dmiLb, 2)} lb</b><span>DM intake per day (${fmt(pr.dmiPct, 1)}% BW)</span></div>
+      <div class="stat"><b>${fmt(pr.adgLb, 2)} lb</b><span>predicted ADG at ${fmt(pr.bwLb, 0)} lb</span></div>
+      <div class="stat"><b>${fmt(pr.fg, 2)}</b><span>feed:gain (DM)</span></div>
+      <div class="stat"><b>${money2(pr.costDay)}</b><span>feed cost per head per day</span></div>
+      <div class="stat"><b>${money2(pr.cog)}</b><span>feed cost per lb of gain</span></div>
+      <div class="stat"><b>${sgn(pr.mpBal, 0)} g</b><span>MP balance (supply ${fmt(pr.mp, 0)} g/d)</span></div>
+      <div class="stat"><b style="font-size:1rem">${pr.limitBy}</b><span>what limits gain</span></div>
+    </div>` : '<p class="small muted">Enter a ration to see the prediction.</p>'}
+    ${riskNotes(A, p)}
+  </section>
+`;
+}
+function riskNotes(A, p) {
+  let prev = (st.pens.find(q => q.id === p.id) || {}).ration;
+  const fromArrival = !(F.rationTotal(prev) > 0) && R() === 1;
+  if (fromArrival) prev = F.arrivalDiet(); else if (!(F.rationTotal(prev) > 0)) prev = null;
+  const pa = prev ? F.analyze(S(), prev) : null, jump = pa ? A.conc - pa.conc : 0, n = [];
+  if (A.tot <= 0) return '';
+  const ls = lambsIn(p.id), stPen = st.pens.find(q => q.id === p.id);
+  const changedNow = !stPen || JSON.stringify(stPen.ration || {}) !== JSON.stringify(p.ration), stepped = p.step && changedNow;
+  if (ls.length && ls.every(L => L.lastConc != null)) {
+    // each lamb against the concentrate level it is used to: new arrivals came off grass, moved lambs from their old pen
+    const big = ls.filter(L => A.conc - L.lastConc > 15);
+    if (big.length) {
+      const mx = Math.max(...big.map(L => A.conc - L.lastConc)), fresh = big.filter(L => L.dof === 0).length;
+      n.push(`Concentrate is up to ${fmt(mx, 0)} points above what ${big.length === ls.length ? 'these lambs are' : big.length + ' of these lambs are'} used to${fresh ? ` (${fresh} just off grass)` : ''}${stepped ? ', stepped over 7 days' : changedNow ? ', all at once' : ', all at once: the 7-day step-in only applies when the pen\'s ration changes'}.`);
+    }
+  } else if (jump > 15) n.push(`Concentrate rises ${fmt(jump, 0)} percentage points from ${fromArrival ? 'the grass hay they arrived on' : 'last period'}${p.step ? ' (stepped over 7 days)' : ', all at once'}.`);
+  if (A.forageNDF < 6) n.push('Very little effective fiber from forage.');
+  if (A.caP < 2) n.push(`Ca:P is ${fmt(A.caP, 2)}.`);
+  if (A.nh4cl < 0.4) n.push('No or little ammonium chloride.');
+  if (A.s > 0.3) n.push(`Sulfur is ${fmt(A.s, 2)}% of DM.`);
+  if (A.cu > 15) n.push(`Copper is ${fmt(A.cu, 0)} ppm.`);
+  if (A.fat > 6) n.push(`Fat is ${fmt(A.fat, 1)}% of DM.`);
+  if (A.rdp < 0.13 * A.tdn * 0.9) n.push('Rumen-degradable protein looks short of what the microbes can use.');
+  return n.length ? `<div class="msg warn"><span class="ic">!</span><p><b>Check:</b> ${n.join(' ')}</p></div>` : '';
+}
+
+/* ---------- 3. health ---------- */
+function renderHealth() {
+  const d = dec(), s = S(), on = F.onFeed(st), T = st.paths.temps[R() - 1];
+  const v0 = on.filter(L => L.vacc === 0).length, v1 = on.filter(L => L.vacc === 1).length, imp = on.filter(L => !L.implant).length, unshorn = on.filter(L => L.shornDay == null).length;
+  const hist = {}; for (const e of st.events) hist[e.type === 'death' ? 'death: ' + e.cause : e.type] = (hist[e.type === 'death' ? 'death: ' + e.cause : e.type] || 0) + 1;
+  return `<div class="head"><div><span class="eyebrow">Period ${R()} · step 3</span><h2>Health & handling</h2>
+  <p>Work the lambs at the start of the period. Every handling is a stress on the lambs, and lambs already carrying a disease risk can tip over when stressed.</p></div></div>
+  ${(() => {
+    // once every lamb has had a treatment, drop that option from later periods
+    if (!(v0 + v1)) d.vaccinate = false; if (!imp) d.implant = false; if (!unshorn) d.shear = false;
+    const cards = [], done = [];
+    if (v0 + v1) cards.push(`<section class="panel stack"><h3>CD&T vaccine · ${money2(s.vaccineCost)} per dose</h3>
+    <p>Protects against enterotoxemia (overeating disease). Lambs of unknown history need two doses three to four weeks apart; protection is partial after the first dose.</p>
+    <p class="small mono">${v0} with no dose · ${v1} with one dose · ${on.length - v0 - v1} fully vaccinated</p>
+    <label class="inline"><input type="checkbox" data-act="mgmt" data-k="vaccinate" ${d.vaccinate ? 'checked' : ''}> Give the next dose to every lamb that needs one (${v0 + v1} head, ${money(s.vaccineCost * (v0 + v1))})</label></section>`);
+    else done.push('CD&T: every lamb has had both doses');
+    if (imp) cards.push(`<section class="panel stack"><h3>Zeranol implant · ${money2(s.implantCost)} per head</h3>
+    <p>Approved for feedlot lambs. It improves gain and feed efficiency and produces leaner gain at a given weight. One implant per feeding period is enough.</p>
+    <p class="small mono">${imp} not implanted</p>
+    <label class="inline"><input type="checkbox" data-act="mgmt" data-k="implant" ${d.implant ? 'checked' : ''}> Implant every lamb not yet implanted (${money(s.implantCost * imp)})</label></section>`);
+    else done.push('Implant: every lamb is implanted');
+    if (unshorn) cards.push(`<section class="panel stack"><h3>Shearing · ${money2(s.shearCost)} per head</h3>
+    <p>Shorn lambs eat more, dress higher and are cleaner to handle, and the fleece sells for about ${money2(s.fleeceLb * s.fleecePrice)}. But a freshly shorn lamb needs more energy to stay warm, and respiratory disease rises if it turns cold in the first three weeks.</p>
+    <p class="small mono">${unshorn} still in the wool · expected ${T}°F this period</p>
+    <label class="inline"><input type="checkbox" data-act="mgmt" data-k="shear" ${d.shear ? 'checked' : ''}> Shear every lamb still in the wool</label></section>`);
+    else done.push('Shearing: every lamb is shorn');
+    return (cards.length ? `<div class="grid2">${cards.join('')}</div>` : '<p class="small muted">Nothing left to do at handling: every lamb is vaccinated, implanted and shorn.</p>')
+      + (done.length && cards.length ? `<section class="panel"><h3>Already done</h3><ul class="small">${done.map(x => `<li>${x}</li>`).join('')}</ul></section>` : '');
+  })()}
+  <section class="panel"><h3>Health history</h3>${Object.keys(hist).length ? `<table><tbody>${Object.entries(hist).map(([k, n]) => `<tr><td>${esc(k)}</td><td class="num">${n}</td></tr>`).join('')}</tbody></table>` : '<p class="small muted">Nothing yet.</p>'}
+    <p class="small muted">Sick lambs are pulled and treated automatically at ${money2(s.treatCost)} per treatment.</p></section>`;
+}
+
+/* ---------- 4. sort & market ---------- */
+const estYG = L => F.yieldGrade(L.fatEst != null ? L.fatEst : 0);
+function estValue(L, idx) {
+  const s = S(), live = L.bw * LB * (1 - s.shrink);
+  return F.saleValue(st, { how: 'live', live, yg: estYG(L), sick: L.sick > 0 }, idx != null ? idx : F.baseLiveIdx(st, R()));
+}
+function renderMarket() {
+  const d = dec(), s = S(), on = F.onFeed(st);
+  const rows = sortRows('lambs', on, {
+    tag: L => L.id, sex: L => L.sex, pen: L => penOf(L), wt: L => L.bw, adg: L => L.hist.length > 1 ? L.hist[L.hist.length - 1] - L.hist[L.hist.length - 2] : 0,
+    live: L => estValue(L), fat: L => L.fatEst || 0, cons: L => d.consign[L.id] || ''
+  }, { k: 'wt', dir: -1 });
+  const nCons = Object.keys(d.consign).length;
+  const consVal = sum(on.filter(L => d.consign[L.id]), L => estValue(L));
+  const body = rows.map(L => {
+    const c = d.consign[L.id] || '', adg = L.hist.length > 1 ? (L.hist[L.hist.length - 1] - L.hist[L.hist.length - 2]) / s.daysPerRound : null;
+    const sick = L.sick > 0 ? `<span class="badge warn" title="Sells at a ${pct(s.sickDock)} discount">sick −${pct(s.sickDock)}</span>` : L.chronic ? '<span class="badge neutral">poor doer</span>' : '';
+    return `<tr class="${c ? 'sel' : ''}"><td class="mono">${L.tag}</td><td>${L.sex === 'W' ? 'Wether' : 'Ewe'}</td>
+      <td class="num mono">${fmt(L.bw * LB, 1)}</td><td class="num mono">${fmt(adg, 2)}</td><td class="num mono">${L.dof}</td>
+      <td class="num mono">${fmt(L.fatEst, 2)}${estYG(L) >= 4 ? ` <span class="badge ${estYG(L) >= 5 ? 'bad' : 'warn'}">YG ${estYG(L)}</span>` : ''}</td><td>${sick}</td>
+      <td class="num mono">${money(estValue(L))}</td>
+      <td>${finalRound() ? '<span class="small muted">final sale</span>' : `<label class="inline"><input type="checkbox" data-act="consign" data-id="${L.id}" ${c ? 'checked' : ''} aria-label="Sell lamb ${L.tag}"> sell</label>`}</td></tr>`;
+  }).join('');
+  return `<div class="head"><div><span class="eyebrow">${finalRound() ? 'Final sale' : 'Period ' + R() + ' · step 4'}</span><h2>Market</h2>
+  <p>${finalRound() ? 'Feeding is over. Every lamb still on feed goes to market now.' : 'Pick lambs to sell. Lambs you sell ship at the start of this period at this period\'s price.'} Values are live, after shrink.</p></div></div>
+  <div class="grid2">
+  <section class="panel stack"><h3>Billings slaughter lambs, this week</h3>
+    <table><thead><tr><th>Live weight</th><th class="num">$/lb live</th><th class="num">$/cwt</th></tr></thead><tbody>
+      ${s.liveSlide.map(x => `<tr><td>${x[0]} lb</td><td class="num mono">$${(x[1] * F.baseLiveIdx(st, R())).toFixed(2)}</td><td class="num mono">$${(x[1] * F.baseLiveIdx(st, R()) * 100).toFixed(0)}</td></tr>`).join('')}
+    </tbody></table>
+    <p class="small muted">Paid on weight after ${pct(s.shrink)} shrink, interpolated between the weights shown.</p>
+    <p class="small"><b>Overfat docks:</b> yield grade 4 (about 0.36 in. backfat or more) ${money2(s.dockYG4 * 100)}/cwt; yield grade 5 (0.46 in. or more) ${money2(s.dockYG5 * 100)}/cwt. The fat column is your estimate from handling; the buyer grades the real thing.</p>
+    <p class="small"><b>Sick lambs:</b> buyers take ${pct(s.sickDock)} off a lamb that is sick when it ships. Once it recovers it is back to full value.</p>
+    <p class="small"><b>Lot size:</b> buyers take at least ${s.minLot} head per shipment${s.minLot > 1 ? ', so sell none or at least ' + s.minLot + ' in a week' : ''}.</p></section>
+  <section class="panel stack"><h3>Quick tools</h3>
+    ${finalRound() ? '' : `<div class="row"><label class="inline">Sell <select id="qsSex" aria-label="Which lambs to sell">${[['A', 'all lambs'], ['W', 'wethers'], ['E', 'ewe lambs']].map(([v, t]) => `<option value="${v}" ${(UI.qsSex || 'A') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label><label class="inline">at ≥ <input type="number" id="qsWt" value="${UI.qsWt || 130}" step="1" style="width:5em"> lb</label><button class="btn sm" data-act="qsell">Mark</button><button class="btn sm" data-act="qclear">Clear sales</button></div>`}
+    ${finalRound() ? '' : (() => { const fat = on.filter(L => estYG(L) >= 4); return `<div class="row"><button class="btn sm" data-act="qsellyg" ${fat.length ? '' : 'disabled'}>Mark yield grade 4 & 5 lambs</button><span class="small muted">${fat.length ? `${fat.length} estimated YG 4–5 (${fat.filter(L => estYG(L) >= 5).length} YG 5)` : 'none estimated at YG 4 or 5'}</span></div>`; })()}
+    <p class="mono small">${finalRound() ? on.length + ' lambs to the final sale' : nCons + ' marked to sell · about ' + money(consVal) + ' at this week\'s Billings price'}</p>
+    ${!finalRound() && nCons > 0 && nCons < s.minLot && nCons < on.length ? `<div class="msg warn"><span class="ic">!</span><p>Buyers take at least ${s.minLot} head. Mark ${s.minLot - nCons} more, or clear these sales.</p></div>` : ''}</section></div>
+  <div class="tframe" data-scroll="lambs"><table><thead><tr>${thS('lambs', 'tag', 'Tag', 0, '', { k: 'wt', dir: -1 })}${thS('lambs', 'sex', 'Sex', 0, '', { k: 'wt', dir: -1 })}${thS('lambs', 'wt', 'Weight, lb', 1, 'Full live weight', { k: 'wt', dir: -1 })}${thS('lambs', 'adg', 'ADG', 1, 'Last period', { k: 'wt', dir: -1 })}<th class="num">DOF</th>${thS('lambs', 'fat', 'Fat, in', 1, 'Backfat estimated by handling; yield grade 4 and 5 lambs are docked', { k: 'wt', dir: -1 })}<th></th>${thS('lambs', 'live', 'Value', 1, 'Live, after shrink, at this week\'s Billings price', { k: 'wt', dir: -1 })}${thS('lambs', 'cons', 'Sell', 0, '', { k: 'wt', dir: -1 })}</tr></thead>
+  <tbody>${body || '<tr><td colspan="9" class="muted">No lambs on feed.</td></tr>'}</tbody></table></div>`;
+}
+
+/* ---------- 5. commit ---------- */
+function renderCommit() {
+  const d = dec(), s = S(), v = F.validate(st, d), on = F.onFeed(st);
+  const nCons = finalRound() ? on.length : Object.keys(d.consign).length;
+  const penLines = d.pens.map(p => {
+    const ls = lambsIn(p.id); if (!ls.length && !finalRound()) return '';
+    const pr = F.predict(st, p, ls);
+    return `<tr><td class="num">${ls.length}</td><td class="num mono">${pr.A.tot > 0 ? money(pr.A.costAsFed) : '—'}</td><td class="num mono">${fmt(pr.adgLb, 2)}</td><td class="num mono">${pr.costDay != null ? money(pr.costDay * ls.length * s.daysPerRound) : '—'}</td><td>${p.lasalocid ? 'lasalocid' : ''}${p.step ? ' · stepped' : ''}${p.adlib ? '' : ' · limit ' + Math.round(p.limit * 100) + '%'}</td></tr>`;
+  }).join('');
+  return `<div class="head"><div><span class="eyebrow">${finalRound() ? 'Final sale' : 'Period ' + R() + ' · step 5'}</span><h2>${finalRound() ? 'Ship the last lambs' : 'End the period'}</h2>
+  <p>${finalRound() ? 'Every lamb still on feed is consigned now.' : `Check the plan, then feed for ${s.daysPerRound} days. You can't undo this.`}</p></div></div>
+  ${v.errs.map(e => `<div class="msg err"><span class="ic">✕</span><p>${esc(e)}</p></div>`).join('')}
+  ${v.warns.map(e => `<div class="msg warn"><span class="ic">!</span><p>${esc(e)}</p></div>`).join('')}
+  ${finalRound() ? '' : `<section class="panel"><h3>This period</h3><table><thead><tr><th class="num">Head</th><th class="num">$/ton</th><th class="num">Pred. ADG</th><th class="num">Feed, period</th><th>Management</th></tr></thead><tbody>${penLines}</tbody></table></section>`}
+  <section class="panel"><h3>Handling and sales</h3><table><tbody>
+    ${d.vaccinate ? '<tr><td>CD&T dose to lambs that need one</td></tr>' : ''}${d.implant ? '<tr><td>Implant lambs not yet implanted</td></tr>' : ''}${d.shear ? '<tr><td>Shear lambs in the wool</td></tr>' : ''}
+    <tr><td>Lambs consigned: ${nCons}</td></tr></tbody></table></section>
+  <div class="row"><span class="spacer"></span><button class="btn primary" data-act="commit" ${v.errs.length ? 'disabled' : ''}>${finalRound() ? 'Ship the final lambs' : `Feed period ${R()} (${periodDates(R())})`}</button></div>`;
+}
+
+/* ---------- awaiting settlement / closeout ---------- */
+function renderAwaiting() {
+  return `<div class="head"><div><span class="eyebrow">Feeding is over</span><h2>Waiting on the last market file</h2><p>Your last lambs have shipped. They'll be priced when your instructor posts the final market file.</p></div></div>
+  ${classBanner()}
+  <div class="row"><label class="btn primary" style="cursor:pointer">Load market file<input type="file" id="bullFile" accept=".json,application/json" hidden></label></div>`;
+}
+function renderCloseout() {
+  const s = S(), sm = F.summary(st), sold = Object.values(st.cons).flat(), dead = st.lambs.filter(L => L.status === 'dead');
+  const tot = {}; for (const L of Object.values(st.led)) for (const k in L) if (typeof L[k] === 'number') tot[k] = (tot[k] || 0) + L[k];
+  const per = v => money2(v / st.lambs.length);
+  const dc = {}; for (const L of dead) dc[L.cause] = (dc[L.cause] || 0) + 1;
+  return `<div class="head"><div><span class="eyebrow">Closeout</span><h2>Closeout for ${esc(st.name)}</h2><p>All lambs are marketed and paid. Here is how the pen performed and where the money went, per head bought.</p></div></div>
+  <div class="stats">
+    <div class="stat"><b class="${sm.net < 0 ? 'unf' : ''}">${money(sm.net)}</b><span>net return (${money2(sm.perHead)} per head bought)</span></div>
+    <div class="stat"><b>${fmt(sm.adg, 2)} lb</b><span>ADG, all lambs</span></div>
+    <div class="stat"><b>${fmt(sm.fg, 2)}</b><span>feed:gain, DM</span></div>
+    <div class="stat"><b>${money2(sm.cog)}</b><span>feed cost per lb of gain</span></div>
+    <div class="stat"><b>${fmt(sm.deathPct, 1)}%</b><span>death loss</span></div>
+    <div class="stat"><b>${sold.length ? fmt(sum(sold, x => x.live) / sold.length, 0) + ' lb' : '—'}</b><span>mean sale weight (shrunk)</span></div>
+  </div>
+  <div class="grid2">
+    <section class="panel"><h3>Per head bought</h3><table class="ledger"><tbody>${ledgerRows(tot).filter(r => Math.abs(r[1]) > 0.5).map(r => `<tr><td>${r[0]}</td><td class="num ${r[1] < 0 ? 'unf' : ''}">${per(r[1])}</td></tr>`).join('')}
+      <tr class="total"><td>Net per head</td><td class="num ${sm.net < 0 ? 'unf' : ''}">${per(sm.net)}</td></tr></tbody></table></section>
+    <section class="panel stack"><h3>Sales and losses</h3>
+      <p>Sold ${sold.length} lambs live at a mean ${sold.length ? fmt(sum(sold, x => x.live) / sold.length, 1) : '—'} lb after shrink, for ${sold.length ? money(sum(sold, x => x.value || 0) / sold.length) : '—'} a head.</p>
+      ${(() => { const d4 = sold.filter(x => x.yg === 4).length, d5 = sold.filter(x => x.yg >= 5).length; const sk = sold.filter(x => x.sick).length; return (d4 + d5 ? `<p>Docked as overfat: ${d4} at yield grade 4${d5 ? `, ${d5} at yield grade 5` : ''}.</p>` : '<p>No lambs were docked as overfat.</p>') + (sk ? `<p>Sold while sick (${pct(s.sickDock)} off): ${sk}.</p>` : ''); })()}
+      <p>Deaths: ${dead.length ? Object.entries(dc).map(([c, n]) => `${n} ${CAUSE[c] || c}`).join(', ') : 'none'}.</p></section>
+  </div>
+  ${trendCharts(true)}
+  <section class="panel stack"><h3>Hand in your game</h3>
+    <p>Save your game file and upload it to the associated Canvas assignment.</p>
+    <div class="row"><button class="btn primary" data-act="savefile">Save game file</button><button class="btn" data-act="copysave">Copy save code</button></div>
+    <textarea id="copyFallback" rows="3" hidden aria-label="Save code"></textarea></section>`;
+}
+
+/* ============ lambs, trends ============ */
+function renderLambs() {
+  const rows = sortRows('all', st.lambs, { tag: L => L.id, sex: L => L.sex, st: L => L.status, inw: L => L.inWt, wt: L => L.bw, dof: L => L.dof, val: L => L.value || 0 }, { k: 'tag', dir: 1 });
+  const def = { k: 'tag', dir: 1 };
+  return `<div class="shell wide"><main class="main"><div class="head"><div><h2>Lambs</h2><p>Every lamb bought, with weights at the end of each period.</p></div></div>
+  <div class="tframe" data-scroll="all"><table><thead><tr>${thS('all', 'tag', 'Tag', 0, '', def)}${thS('all', 'sex', 'Sex', 0, '', def)}${thS('all', 'st', 'Status', 0, '', def)}${thS('all', 'inw', 'In, lb', 1, '', def)}${thS('all', 'wt', 'Now/out, lb', 1, '', def)}${thS('all', 'dof', 'DOF', 1, '', def)}<th>Weights by period</th><th class="num">Treated</th>${thS('all', 'val', 'Sale $', 1, '', def)}</tr></thead><tbody>
+  ${rows.map(L => `<tr class="${L.status === 'dead' ? 'gone' : ''}"><td class="mono">${L.tag}</td><td>${L.sex === 'W' ? 'Wether' : 'Ewe'}</td><td>${L.status === 'dead' ? 'died: ' + esc(L.cause) : L.status === 'sold' ? 'sold ' + (L.saleHow || '') : L.status === 'consigned' ? 'shipped, unpaid' : 'on feed'}</td><td class="num mono">${fmt(L.inWt, 1)}</td><td class="num mono">${fmt(L.bw * LB, 1)}</td><td class="num mono">${L.dof}</td><td class="mono small">${L.hist.map(w => Math.round(w)).join(' · ')}</td><td class="num mono">${L.treat || ''}</td><td class="num mono">${L.value ? money(L.value) : ''}</td></tr>`).join('')}
+  </tbody></table></div><div class="row"><button class="btn" data-act="csv">Download lambs CSV</button></div></main></div>`;
+}
+function lambsCSV() {
+  const head = ['tag', 'sex', 'status', 'cause', 'in_lb', 'out_lb', 'dof', 'dmi_total_lb', 'feed_cost', 'treatments', 'sale_how', 'sale_value'].concat(Array.from({ length: S().rounds + 1 }, (_, i) => 'wt_p' + i));
+  return [head.join(',')].concat(st.lambs.map(L => [L.tag, L.sex, L.status, L.cause || '', L.inWt.toFixed(1), (L.bw * LB).toFixed(1), L.dof, (L.dmiTot * LB).toFixed(1), L.feedCost.toFixed(2), L.treat, L.saleHow || '', L.value || ''].concat(L.hist.map(w => w.toFixed(1))).join(','))).join('\n');
+}
+function trendCharts(withPrices) {
+  const H = st.hist.filter(h => h.head > 0 || h.dead), xs = H.map(h => 'P' + h.r);
+  const n = S().rounds + 1, px = Array.from({ length: n }, (_, i) => 'P' + (i + 1));   // price chart shown only at closeout
+  return `<section class="panel stack"><h3>Performance by period</h3><div class="charts">
+    ${chart({ title: 'Mean live weight (lb)', sub: 'Lambs on feed at the end of each period', xs, series: [{ name: 'Weight', v: H.map(h => h.meanLb) }] })}
+    ${chart({ title: 'ADG (lb/day)', sub: 'Mean of lambs on feed', xs, series: [{ name: 'ADG', v: H.map(h => h.adg) }], yFmt: v => fmt(v, 2) })}
+    ${chart({ title: 'Feed:gain (DM)', sub: 'Lower is better. Left blank when live-weight gain was under 0.1 lb/day, usually the week after a big ration change, when gut fill drops.', xs, series: [{ name: 'F:G', v: H.map(fgOf) }], yFmt: v => fmt(v, 1) })}
+    ${chart({ title: 'DM intake (% of body weight)', sub: 'Mean per head per day', xs, series: [{ name: 'DMI', v: H.map(h => h.meanLb ? h.dmi / h.meanLb * 100 : null) }], yFmt: v => fmt(v, 1) })}
+    ${chart({ title: 'Deaths', sub: 'Each period', xs, series: [{ name: 'Deaths', v: H.map(h => h.dead) }], bars: true, yFmt: v => fmt(v, 0) })}
+    ${withPrices ? chart({ title: 'Prices (% of base)', sub: 'Base lamb price and feed price by period', xs: px, series: [{ name: 'Lamb', v: px.map((_, i) => F.baseLiveIdx(st, i + 1)) }, { name: 'Feed', v: px.map((_, i) => F.feedIdx(st, i + 1)), color: 'var(--s2)' }], yFmt: v => pct(v), kind: 'pct' }) : ''}
+  </div></section>`;
+}
+function renderTrends() { return `<div class="shell wide"><main class="main"><div class="head"><div><h2>Trends</h2><p>How the pen has performed each period.</p></div></div>${st.hist.length ? trendCharts() : '<p class="muted">Feed one period to see trends.</p>'}</main></div>`; }
+
+/* ============ game & saves ============ */
+function renderGame() {
+  const nf = UI.newForm || (UI.newForm = { name: '', code: '', settingsCode: '', confirm: false });
+  return `<div class="shell wide"><main class="main"><div class="head"><div><h2>Game & saves</h2><p>The game saves itself in this browser. To move to another computer or hand in your game, save a file or copy a save code.</p></div></div>
+  <div class="grid2">
+  <section class="panel stack"><h3>This game</h3><table><tbody><tr><td>Feeder</td><td>${esc(st.name)}</td></tr><tr><td>Class code</td><td class="mono">${esc(st.seed)}</td></tr><tr><td>Progress</td><td>${over() ? 'Closed out' : finalRound() ? 'Final sale' : 'Period ' + R() + ' of ' + S().rounds}</td></tr><tr><td>Anonymous code</td><td class="mono">${esc(st.fid)}</td></tr></tbody></table>
+    <div class="row"><button class="btn primary" data-act="savefile">Save game file</button><button class="btn" data-act="copysave">Copy save code</button></div><textarea id="copyFallback" rows="3" hidden aria-label="Save code"></textarea></section>
+  <section class="panel stack"><h3>Load a game</h3><label class="inline">Game file <input type="file" id="loadFile" accept=".json,application/json"></label>
+    <textarea id="pasteSave" rows="3" placeholder="…or paste a save code here" aria-label="Paste save code">${esc(UI.pasteSave)}</textarea><div class="row"><button class="btn" data-act="loadpaste">Load pasted code</button><span class="small muted">Loading replaces the game in this browser.</span></div></section>
+  <section class="panel stack"><h3>Start a new game</h3><p class="small">Everyone in a class uses the same class code and settings, so every student buys the same lambs and faces the same prices.</p>
+    <div class="form"><label>Your name<input type="text" id="nfName" value="${esc(nf.name)}"></label><label>Class code<input type="text" id="nfCode" value="${esc(nf.code)}"></label></div>
+    <label class="small">Class settings code (optional)<textarea id="nfSettings" rows="2">${esc(nf.settingsCode)}</textarea></label>
+    <label class="inline small">…or a class settings file <input type="file" id="nfFile" accept=".json,application/json"></label>
+    <div class="row">${nf.confirm ? `<span class="small">This replaces the game in this browser.</span><button class="btn primary" data-act="newgo">Start new game</button><button class="btn" data-act="cancelnew">Cancel</button>` : '<button class="btn primary" data-act="newask">Start new game…</button>'}</div></section>
+  </div></main></div>`;
+}
+
+/* ============ instructor ============ */
+const SET_FIELDS = [['rounds', 'Feeding periods', 1], ['daysPerRound', 'Days per period', 1], ['head', 'Lambs bought', 1], ['arrivalLb', 'Mean arrival weight, lb', 1], ['arrivalSD', 'Arrival weight SD, lb', 1], ['wetherFrac', 'Share wethers (0–1)', 0.05],
+  ['minLot', 'Minimum lambs per sale', 1], ['dockYG4', 'Overfat dock, YG 4, $/lb live', 0.01], ['dockYG5', 'Overfat dock, YG 5, $/lb live', 0.01], ['sickDock', 'Sick-lamb discount (0–1)', 0.05],
+  ['shrink', 'Sale shrink (0–1)', 0.01], ['yardage', 'Yardage, $/hd/day', 0.01], ['wastage', 'Feed wastage (0–1)', 0.01], ['interest', 'Interest rate (0–1)', 0.01],
+  ['vaccineCost', 'CD&T, $/dose', 0.05], ['implantCost', 'Implant, $/head', 0.05], ['shearCost', 'Shearing, $/head', 0.5], ['fleecePrice', 'Fleece, $/lb grease', 0.05], ['treatCost', 'Treatment, $/case', 0.5], ['lasalocidPerTon', 'Lasalocid, $/ton feed', 0.5],
+  ['priceSD', 'Lamb price variability (SD)', 0.01], ['feedSD', 'Feed price variability (SD)', 0.01], ['priceRho', 'Price carry-over (0–1)', 0.1]];
+const RISK_FIELDS = [['riskAcid', 'Acidosis'], ['riskCalc', 'Urinary calculi'], ['riskEntero', 'Enterotoxemia'], ['riskPolio', 'Polio (sulfur)'], ['riskCopper', 'Copper'], ['riskCocci', 'Coccidiosis'], ['riskPneu', 'Respiratory disease']];
+const FEED_COLS = [['price', '$/ton'], ['dm', 'DM %'], ['cp', 'CP'], ['rup', 'RUP %CP'], ['tdn', 'TDN'], ['ndf', 'NDF'], ['starch', 'Starch'], ['fat', 'Fat'], ['ca', 'Ca'], ['p', 'P'], ['s', 'S'], ['cu', 'Cu ppm'], ['mo', 'Mo ppm']];
+function clsState() {
+  if (UI.cls) return UI.cls;
+  try { const o = JSON.parse(localStorage.getItem(CLS_KEY) || 'null'); if (o && o.settings) return (UI.cls = { code: o.code, settings: Object.assign(F.defaultSettings(), o.settings) }); } catch (e) {}
+  return (UI.cls = { code: 'ANSC4XX-F26', settings: F.defaultSettings() });
+}
+function saveCls() { try { localStorage.setItem(CLS_KEY, JSON.stringify(UI.cls)); } catch (e) {} }
+function roundSubs() {
+  const subs = UI.subs; if (!subs.length) return { r: null, list: [] };
+  const cnt = {}; for (const x of subs) cnt[x.round] = (cnt[x.round] || 0) + 1;
+  const r = UI.closeRound && cnt[UI.closeRound] ? UI.closeRound : +Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || b - a)[0];
+  const by = {}; for (const x of subs) if (x.round === r && (!by[x.fid] || x.created > by[x.fid].created)) by[x.fid] = x;
+  return { r, list: Object.values(by), rounds: cnt };
+}
+function renderInstructor() {
+  const c = clsState(), s = c.settings, { r, list, rounds } = roundSubs();
+  const supply = sum(list, x => x.head), classHead = Math.max(list.length, UI.classSize || list.length) * s.head;
+  const base = r != null ? (s.priceIdx && s.priceIdx[r - 1] != null ? s.priceIdx[r - 1] : F.genPaths(c.code, s).live[r - 1]) : 1;
+  const auto = r != null ? F.clearingIdx(s, base, supply, classHead || s.head) : base;
+  const idx = UI.idxOverride != null ? UI.idxOverride : auto;
+  const next = r != null ? r + 1 : 2;
+  const paths = F.genPaths(c.code, s);
+  return `<div class="shell wide"><main class="main"><div class="head"><div><h2>Instructor</h2><p>Set prices, costs and risks, then share the class settings with students. Everyone with the same class code and settings buys the same lambs and sees the same prices. Load students' save files at the bottom to compare results.</p></div>
+  <button class="btn sm" data-act="hideinstr">Hide this tab in this browser</button></div>
+  <div class="msg info"><span class="ic">i</span><p>Students don't see this tab. It appears only when the page is opened with <span class="mono">#instructor</span> at the end of its link. It keeps a casual student from stumbling on it, but it isn't a password.</p></div>
+  <section class="panel stack"><h3>Class settings</h3>
+    <div class="row"><span>Price year</span><div class="seg" role="group" aria-label="Price year">${Object.keys(F.PRICE_YEARS).map(y => `<button data-act="priceyear" data-v="${y}" aria-pressed="${String(s.priceYear) === y}">${y}</button>`).join('')}</div>
+      ${s.priceYear === 'custom' ? '<span class="small muted">Prices edited by hand</span>' : ''}</div>
+    <p class="small muted">${F.PRICE_YEARS[s.priceYear] ? esc(F.PRICE_YEARS[s.priceYear].note) + ' ' : ''}A preset sets the feeder and slaughter lamb slides, sets each feed's price for that year (USDA price indexes; minerals held at 2026), and moves the first day on feed to that year. You can still edit any value below.</p>
+    <div class="form"><label>Class code<input type="text" id="clsCode" value="${esc(c.code)}"></label><label>First day on feed<input type="date" id="clsStart" value="${esc(s.startDate || '2026-09-15')}"></label>${SET_FIELDS.map(([k, l, step]) => `<label>${l}<input type="number" step="${step}" data-act="clsset" data-k="${k}" value="${s[k]}"></label>`).join('')}</div>
+    <details><summary>Feeds: prices and composition (DM basis)</summary><p class="small muted" style="margin-top:8px">Default prices: feed barley from USDA AMS Montana elevator bids (Golden Triangle, Oct 22, 2026, $3.64/bu) plus delivery and rolling; soybean meal and DDGS from the USDA AMS monthly processor feedstuff report (Oct 8, 2026) plus freight to Montana; hay from the USDA AMS Rock Valley hay auction (Oct 1, 2026). Corn is CBOT December plus an assumed Montana delivered basis. Composition is typical table values.</p>
+      <div class="tframe" style="margin-top:8px"><table><thead><tr><th>Feed</th>${FEED_COLS.map(x => `<th>${x[1]}</th>`).join('')}</tr></thead><tbody>${s.feeds.map((f, i) => `<tr><td>${esc(f.name)}</td>${FEED_COLS.map(([k]) => `<td><input type="number" step="any" data-act="clsfeed" data-i="${i}" data-k="${k}" value="${f[k]}" style="width:5em"></td>`).join('')}</tr>`).join('')}</tbody></table></div></details>
+    <details><summary>Lamb prices: feeder purchase and live sale</summary>
+      <p class="small muted" style="margin-top:8px">The 2026 preset (the default) uses USDA AMS report 1772 (Billings, MT, Sep 21 and Oct 5, 2026); the other years use the sources in the price-year note above. Prices between listed weights are interpolated.</p>
+      <div class="form" style="margin-top:8px">${s.buySlide.map((x, i) => `<label>Feeder ${x[0]} lb, $/lb<input type="number" step="0.01" data-act="clsslide" data-t="buySlide" data-i="${i}" value="${x[1]}"></label>`).join('')}${s.liveSlide.map((x, i) => `<label>Slaughter ${x[0]} lb, $/lb<input type="number" step="0.01" data-act="clsslide" data-t="liveSlide" data-i="${i}" value="${x[1]}"></label>`).join('')}</div></details>
+    <details><summary>Weather and price paths by period</summary>
+      <div class="tframe" style="margin-top:8px"><table><thead><tr><th>Period</th><th>Mean °F</th><th>Lamb price, % of base</th><th>Feed price, % of base</th></tr></thead><tbody>${Array.from({ length: s.rounds + 1 }, (_, i) => `<tr><td>${i < s.rounds ? 'Period ' + (i + 1) : 'Final sale'}</td><td><input type="number" step="1" data-act="clstemp" data-i="${i}" value="${s.temps[i] != null ? s.temps[i] : ''}" style="width:5em"></td><td><input type="number" step="1" data-act="clspath" data-p="priceIdx" data-i="${i}" value="${Math.round((s.priceIdx && s.priceIdx[i] != null ? s.priceIdx[i] : paths.live[i]) * 100)}" style="width:5em"></td><td><input type="number" step="1" data-act="clspath" data-p="feedIdx" data-i="${i}" value="${Math.round((s.feedIdx && s.feedIdx[i] != null ? s.feedIdx[i] : paths.feed[i]) * 100)}" style="width:5em"></td></tr>`).join('')}</tbody></table></div>
+      <p class="small muted">Temperatures get a little random variation per class code. Price paths are random from the class code until you edit them.</p><button class="btn sm" data-act="pathreset">Use the random paths</button></details>
+    <details><summary>Health risk multipliers</summary><div class="form" style="margin-top:8px">${RISK_FIELDS.map(([k, l]) => `<label>${l}<input type="number" step="0.1" min="0" data-act="clsset" data-k="${k}" value="${s[k]}"></label>`).join('')}</div><p class="small muted">1 is the default risk. 0 turns a problem off; 2 doubles it.</p></details>
+    <div class="row"><button class="btn primary" data-act="clsfile">Save class settings file</button><button class="btn" data-act="clscopy">Copy class settings code</button><label class="btn" style="cursor:pointer">Open a class settings file<input type="file" id="clsLoad" accept=".json,application/json" hidden></label><span class="spacer"></span>
+      ${UI.clsTry ? `<span class="small">This replaces the game in this browser.</span><button class="btn primary" data-act="clstrygo">Start test game</button><button class="btn" data-act="clstryno">Cancel</button>` : '<button class="btn" data-act="clstry">Play-test these settings…</button>'}<button class="btn sm" data-act="clsdefaults">Reset to defaults</button></div>
+    <textarea id="copyFallback" rows="3" hidden aria-label="Class settings code"></textarea>
+  </section>
+  <section class="panel stack"><h3>Compare students</h3>${UI.classRows.length ? `<div class="tframe"><table><thead><tr><th>Student</th><th class="num">Period</th><th class="num">Net</th><th class="num">$/head</th><th class="num">ADG</th><th class="num">F:G</th><th class="num">Cost of gain</th><th class="num">Death %</th></tr></thead><tbody>${UI.classRows.sort((a, b) => b.net - a.net).map(x => `<tr><td>${esc(x.name)}</td><td class="num">${x.finished ? 'done' : x.round}</td><td class="num">${money(x.net)}</td><td class="num">${money2(x.perHead)}</td><td class="num">${fmt(x.adg, 2)}</td><td class="num">${fmt(x.fg, 2)}</td><td class="num">${money2(x.cog)}</td><td class="num">${fmt(x.deathPct, 1)}</td></tr>`).join('')}</tbody></table></div><button class="btn sm" data-act="rowsclear">Clear</button>` : '<p class="small muted">Load students\' save files to compare them: <label class="inline"><input type="file" id="cmpFiles" accept=".json,application/json" multiple></label></p>'}</section>
+  </main></div>`;
+}
+
+/* ============ guide ============ */
+function renderGuide() {
+  const s = S();
+  return `<div class="shell wide"><main class="main"><div class="prose">
+  <h2>How ${esc(APP_NAME)} works</h2>
+  <p>You buy ${s.head} feeder lambs and feed them for up to ${s.rounds} periods of ${s.daysPerRound} days, starting ${startDate().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}. Each lamb is simulated individually every day: what it eats, the energy and protein it absorbs, how much lean and fat it lays down, and whether it gets sick.</p>
+  <h3>Intake</h3><p>Each lamb eats the least of three limits: the energy it needs for maintenance plus its potential gain, how much NDF its rumen can hold (about 1.8% of body weight as NDF), and a cap of 5% of body weight. On high-forage rations fill limits intake; on finishing rations energy demand does. Cold raises intake, and freshly shorn lambs eat more.</p>
+  <h3>Energy</h3><p>ME is 82% of DE, and DE is TDN × 0.04409 Mcal/kg. Efficiency of ME use for maintenance (k<sub>m</sub> = 0.02·M/D + 0.5) and for gain (k<sub>g</sub> = 0.043·M/D) both rise with energy density, as in the CSIRO feeding standards. Maintenance is 0.30 MJ per kg<sup>0.75</sup> divided by k<sub>m</sub>, and rises in the cold, especially for shorn lambs. The energy in a kg of gain rises as a lamb approaches its mature size and on a high plane of nutrition, because more of the gain is fat. Ewe lambs fatten sooner than wethers, and implants make gain leaner.</p>
+  <h3>Protein</h3><p>Metabolizable protein is microbial protein (13% of TDN intake, limited by rumen-degradable protein) × 0.64 plus RUP × 0.80. Lambs need about 2.6 g MP per kg<sup>0.75</sup> plus 12 g a day for wool and maintenance, and MP for the protein in their gain at 59% efficiency. If MP runs short, lean gain drops and spare energy goes to fat. Rations short of RDP also digest less well.</p>
+  <h3>Gut fill and dressing</h3><p>Live weight includes gut fill, which is higher on forage. Moving lambs from hay to a high-grain ration lowers live weight for a few days even while they are gaining tissue, and lambs on high-concentrate rations dress higher. Dressing also rises with fat and with shearing.</p>
+  <h3>Health</h3><ul>
+    <li><b>Acidosis:</b> risk rises sharply with big jumps in concentrate, high starch and little effective fiber. Stepping into a new ration over a week and lasalocid both cut the risk.</li>
+    <li><b>Urinary calculi (wethers):</b> Ca:P below 2:1, high phosphorus and no ammonium chloride (about 0.5% of DM) raise the risk.</li>
+    <li><b>Enterotoxemia:</b> high-concentrate rations; two doses of CD&T protect.</li>
+    <li><b>Polioencephalomalacia:</b> dietary sulfur above about 0.3% of DM, often from distillers grains.</li>
+    <li><b>Copper toxicity:</b> sheep store copper in the liver. High-copper rations (a cattle mineral, for example) build it up over weeks, molybdenum slows it, and a hemolytic crisis can follow, often after handling stress.</li>
+    <li><b>Coccidiosis:</b> in the first four weeks on feed, unless the ration carries lasalocid.</li>
+    <li><b>Respiratory disease:</b> highest just after arrival, and in freshly shorn lambs in cold weather.</li></ul>
+  <h3>Selling</h3><p>Lambs sell live on the Billings slaughter-lamb slide after ${pct(s.shrink)} shrink. Price per pound falls as lambs get heavier, so feeding past the sweet spot costs twice: more feed per pound of gain, and a lower price on every pound. Overfat lambs are docked too: yield grade 4 (about 0.36 in. of backfat) loses ${money2(s.dockYG4 * 100)}/cwt and yield grade 5 (0.46 in.) ${money2(s.dockYG5 * 100)}/cwt. Ewe lambs lay down fat at lighter weights than wethers, and high-energy rations fatten faster. Lambs that are sick (under treatment) when they ship sell at a ${pct(s.sickDock)} discount. Buyers take at least ${s.minLot} head per shipment.</p>
+  ${instructorOn() ? `<h3>Notes for instructors</h3><ul><li>Equations are simplified from NRC (2007) Nutrient Requirements of Small Ruminants and the CSIRO feeding standards, and calibrated so a well-managed pen gains about 0.7–0.8 lb/day at 5–5.5 feed:gain with 2–3% death loss.</li><li>Feed composition uses typical table values and every value is editable, as are prices, costs, weather and the health risk multipliers.</li></ul>` : ''}
+  </div></main></div>`;
+}
+
+/* ============ render ============ */
+function renderOverlays() { const el = document.getElementById('overlays'); if (!el) return; el.innerHTML = (UI.busy ? `<div class="overlay" role="status"><div class="box">${esc(UI.busy)}</div></div>` : '') + (UI.toast ? `<div class="toast" role="status">${esc(UI.toast)}</div>` : ''); }
+let _rendering = false, _renderAgain = false;
+function render() {
+  if (!st) return;
+  // replacing the page can blur a focused input, whose change handler renders again; finish this pass first
+  if (_rendering) { _renderAgain = true; return; }
+  _rendering = true;
+  try { renderNow(); } finally { _rendering = false; if (_renderAgain) { _renderAgain = false; render(); } }
+}
+function renderNow() {
+  const scroll = {}; document.querySelectorAll('[data-scroll]').forEach(e => scroll[e.dataset.scroll] = [e.scrollTop, e.scrollLeft]);
+  if (UI.view === 'instructor' && !instructorOn()) UI.view = 'lot';
+  if (UI.view === 'instructor') saveCls();
+  renderTop();
+  const banner = st.practice ? `<div class="banner"><p><b>Practice pen.</b> Try things out here. When your class starts, open Game &amp; saves and start a new game with your name and class code.</p><button class="btn sm" data-act="view" data-v="game">Start class game</button></div>` : '';
+  let v;
+  try { v = { lot: renderLot, lambs: renderLambs, trends: renderTrends, game: renderGame, instructor: renderInstructor, guide: renderGuide }[UI.view](); }
+  catch (err) { console.error(err); v = `<div class="msg err"><span class="ic">✕</span><p>This page couldn't be drawn (${esc(err.message || String(err))}). Your game is saved. Try another step, or reload the page.</p></div>`; }
+  document.getElementById('view').innerHTML = banner + v;
+  document.querySelectorAll('[data-scroll]').forEach(e => { const s = scroll[e.dataset.scroll]; if (s) { e.scrollTop = s[0]; e.scrollLeft = s[1]; } });
+}
+function changed() { save(); render(); }
+
+/* ============ actions ============ */
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act, d = st && !over() ? dec() : null;
+  const pen = () => d.pens.find(p => p.id === UI.penTab) || d.pens[0];
+  switch (act) {
+    case 'view': UI.view = b.dataset.v; render(); window.scrollTo(0, 0); break;
+    case 'step': UI.step = b.dataset.s; render(); window.scrollTo(0, 0); break;
+    case 'sort': { const k = b.dataset.k, t = b.dataset.tbl, cur = UI.sort[t] || {}; UI.sort[t] = { k, dir: cur.k === k ? -cur.dir : (b.classList.contains('num') ? -1 : 1) }; render(); break; }
+    case 'normalize': { const p = pen(), tot = Object.values(p.ration).reduce((t, v) => t + (+v || 0), 0); if (tot > 0) for (const k in p.ration) p.ration[k] = Math.round(p.ration[k] / tot * 1000) / 10; changed(); break; }
+    case 'clearration': { const p = pen(); p.ration = {}; p.spec.use = {}; changed(); break; }
+    case 'use': { const p = pen(), k = b.dataset.k; if (b.checked) p.spec.use[k] = true; else { delete p.spec.use[k]; delete p.ration[k]; } changed(); break; }
+    case 'specdefault': { const p = pen(), use = p.spec.use; p.spec = Object.assign(defaultTargets(), { use }); changed(); break; }
+    case 'adlib': pen().adlib = b.dataset.v === '1'; changed(); break;
+    case 'lasalocid': pen().lasalocid = b.checked; changed(); break;
+    case 'mgmt': d[b.dataset.k] = b.checked; changed(); break;
+    case 'ultra': { const id = +b.dataset.id; d.ultrasound = b.checked ? d.ultrasound.concat(id) : d.ultrasound.filter(x => x !== id); changed(); break; }
+    case 'finalhow': d.finalHow = b.dataset.v; changed(); break;
+    case 'qsell': { const w = +document.getElementById('qsWt').value, sx = document.getElementById('qsSex').value; UI.qsWt = w; UI.qsSex = sx; for (const L of F.onFeed(st)) if (L.bw * LB >= w && (sx === 'A' || L.sex === sx)) d.consign[L.id] = 'live'; changed(); break; }
+    case 'qclear': d.consign = {}; changed(); break;
+    case 'qsellyg': { let n = 0; for (const L of F.onFeed(st)) if (estYG(L) >= 4 && !d.consign[L.id]) { d.consign[L.id] = 'live'; n++; } changed(); toast(n ? `${n} yield grade 4–5 lamb${n === 1 ? '' : 's'} marked to sell.` : 'Those lambs are already marked.'); break; }
+    case 'commit': {
+      const v = F.validate(st, d); if (v.errs.length) break;
+      const r0 = st.round;
+      await busy(finalRound() ? 'Loading the last lambs…' : `Feeding period ${r0}…`, () => {
+        const plan = clone(d);
+        F.commitRound(st, plan);
+        st.pending = null;
+      });
+      UI.step = 'report'; changed(); window.scrollTo(0, 0);
+      const h = st.hist[st.hist.length - 1];
+      toast(over() ? 'Feeding is over. All lambs have shipped.' : `Period ${r0} done: ADG ${fmt(h.adg, 2)} lb, ${h.dead} death${h.dead === 1 ? '' : 's'}.`);
+      break;
+    }
+    case 'savesub': { const sub = st.subs[+b.dataset.r]; if (sub) { await offerFile(`msu-lamb-feeding-${slug(st.name)}-period${sub.round}-submission.json`, JSON.stringify(sub)); sub.saved = true; changed(); } break; }
+    case 'csv': await offerFile(`msu-lamb-feeding-${slug(st.name)}-lambs.csv`, lambsCSV()); break;
+    case 'savefile': await offerFile(`msu-lamb-feeding-${slug(st.name)}-${over() ? 'final' : 'period' + Math.min(st.round, S().rounds + 1)}.json`, JSON.stringify({ app: 'bunkcall-save', v: 1, name: st.name, seed: st.seed, data: packState() })); break;
+    case 'copysave': await copyText(packState(), 'Save code'); break;
+    case 'loadpaste': try { const code = document.getElementById('pasteSave').value; await busy('Loading…', () => { st = unpackState(code); st.practice = false; }); UI.view = 'lot'; UI.step = 'report'; changed(); toast('Game loaded.'); } catch (err) { toast(err.message); } break;
+    case 'newask': readNewForm(); UI.newForm.confirm = true; render(); break;
+    case 'cancelnew': UI.newForm.confirm = false; render(); break;
+    case 'newgo': {
+      readNewForm(); const nf = UI.newForm;
+      if (!nf.name.trim() || !nf.code.trim()) { nf.confirm = false; render(); toast('Enter your name and class code.'); break; }
+      let settings = {}; if (nf.settingsCode.trim()) { try { settings = parseClass(nf.settingsCode.trim()).settings; } catch (err) { toast('The class settings code could not be read.'); break; } }
+      await busy('Unloading the lambs…', () => { st = F.newGame({ name: nf.name.trim(), classCode: nf.code.trim(), settings }); });
+      UI.newForm = null; UI.view = 'lot'; UI.step = 'report'; changed(); break;
+    }
+    case 'hideinstr': hideInstructor(); UI.view = 'lot'; render(); toast('Instructor tab hidden. Open the link with #instructor to bring it back.'); break;
+    case 'clsfile': { const c = clsState(); await offerFile(`msu-lamb-feeding-class-${slug(c.code)}.json`, JSON.stringify({ app: 'bunkcall-class', v: 1, classCode: c.code, settings: c.settings })); break; }
+    case 'clscopy': { const c = clsState(); await copyText(btoa(unescape(encodeURIComponent(JSON.stringify({ app: 'bunkcall-class', classCode: c.code, settings: c.settings })))), 'Class settings code'); break; }
+    case 'clstry': UI.clsTry = true; render(); break;
+    case 'clstryno': UI.clsTry = false; render(); break;
+    case 'clstrygo': { const c = clsState(); UI.clsTry = false; await busy('Unloading the lambs…', () => { st = F.newGame({ name: 'Instructor test', classCode: c.code, settings: clone(c.settings) }); }); UI.view = 'lot'; UI.step = 'report'; changed(); toast('Test game started with your class settings.'); break; }
+    case 'priceyear': { const c = clsState(); F.applyPriceYear(c.settings, b.dataset.v); saveCls(); render(); toast(`Prices set to fall ${b.dataset.v}. Save or share the class settings for students to use them.`); break; }
+    case 'clsdefaults': UI.cls = { code: clsState().code, settings: F.defaultSettings() }; changed(); break;
+    case 'pathreset': { const cs = clsState().settings; cs.priceIdx = null; cs.feedIdx = null; changed(); break; }
+    case 'subsclear': UI.subs = []; UI.idxOverride = null; UI.bRound = null; render(); break;
+    case 'subscompare': { const { list } = roundSubs(); for (const x of list) { UI.classRows = UI.classRows.filter(r => r.fid !== x.fid); UI.classRows.push(x.summary); } render(); break; }
+    case 'rowsclear': UI.classRows = []; render(); break;
+    case 'idxauto': UI.idxOverride = null; render(); break;
+    case 'savebull': {
+      const c = clsState(), s = c.settings, { r, list } = roundSubs();
+      const n = +document.getElementById('bRound').value || (r != null ? r + 1 : 2);
+      const closed = n - 1, supply = sum(list, x => x.head);
+      const base = s.priceIdx && s.priceIdx[closed - 1] != null ? s.priceIdx[closed - 1] : F.genPaths(c.code, s).live[closed - 1];
+      const auto = list.length ? F.clearingIdx(s, base, supply, Math.max(list.length, UI.classSize || 1) * s.head) : base;
+      const idx = UI.idxOverride != null ? UI.idxOverride : auto;
+      UI.bDeadline = document.getElementById('bDeadline').value; UI.bNote = document.getElementById('bNote').value;
+      const bull = F.buildBulletin({ classCode: list.length ? list[0].classCode : c.code, round: n, idx, supply, base, deadline: UI.bDeadline.trim(), note: UI.bNote.trim() });
+      await offerFile(`msu-lamb-feeding-${slug(bull.classCode)}-period${n}-market-file.json`, JSON.stringify(bull)); break;
+    }
+  }
+});
+function readNewForm() { const nf = UI.newForm || (UI.newForm = {}); const g = id => document.getElementById(id); if (g('nfName')) nf.name = g('nfName').value; if (g('nfCode')) nf.code = g('nfCode').value; if (g('nfSettings')) nf.settingsCode = g('nfSettings').value; }
+function parseClass(text) { let o; try { o = JSON.parse(text); } catch (e) { o = JSON.parse(decodeURIComponent(escape(atob(text)))); } if (!o || o.app !== 'bunkcall-class') throw new Error('not a class file'); return o; }
+document.addEventListener('change', async e => {
+  const t = e.target, act = t.dataset.act;
+  const d = st && !over() ? dec() : null;
+  const pen = () => d.pens.find(p => p.id === UI.penTab) || d.pens[0];
+  if (act === 'incl') { const p = pen(), v = t.value === '' ? 0 : Math.max(0, +t.value); if (v > 0) { p.ration[t.dataset.k] = v; p.spec.use[t.dataset.k] = true; } else delete p.ration[t.dataset.k]; changed(); return; }
+  if (act === 'spec') { const p = pen(); p.spec[t.dataset.k] = t.value === '' ? null : +t.value; changed(); return; }
+  if (act === 'limit') { pen().limit = clampN(+t.value / 100, 0.5, 1); changed(); return; }
+  if (act === 'stepup') { pen().step = t.checked; changed(); return; }
+  if (act === 'consign') { if (t.checked) d.consign[t.dataset.id] = 'live'; else delete d.consign[t.dataset.id]; changed(); return; }
+  if (t.id === 'bullFile' && t.files[0]) { try { const b = JSON.parse(await t.files[0].text()); let res; await busy('Clearing the market…', () => { res = F.applyBulletin(st, b); }); changed(); toast(`Period ${res.round} opened. Last period's sales cleared at ${Math.round(res.idx * 100)}% of base${res.paid ? ': ' + money(res.paid) : ''}.`); } catch (err) { toast(err.message || 'That file could not be read.'); } return; }
+  if (t.id === 'loadFile' && t.files[0]) { try { const o = JSON.parse(await t.files[0].text()); if (o.app !== 'bunkcall-save') throw new Error('This is not a save file for ' + APP_NAME + '.'); await busy('Loading…', () => { st = unpackState(o.data); st.practice = false; }); UI.view = 'lot'; UI.step = 'report'; changed(); toast('Game loaded.'); } catch (err) { toast(err.message); } return; }
+  if (t.id === 'nfFile' && t.files[0]) { try { const o = parseClass(await t.files[0].text()); readNewForm(); UI.newForm.settingsCode = btoa(unescape(encodeURIComponent(JSON.stringify(o)))); if (!UI.newForm.code) UI.newForm.code = o.classCode || ''; render(); toast('Class settings loaded.'); } catch (err) { toast('That is not a class settings file for ' + APP_NAME + '.'); } return; }
+  // instructor
+  const c = clsState(), cs = c.settings;
+  if (t.id === 'clsCode') { c.code = t.value.trim() || c.code; saveCls(); render(); return; }
+  if (t.id === 'clsStart') { if (/^\d{4}-\d{2}-\d{2}$/.test(t.value)) { cs.startDate = t.value; saveCls(); } return; }
+  if (act === 'clsset') { cs[t.dataset.k] = +t.value; saveCls(); if (['rounds', 'priceSD', 'feedSD', 'priceRho', 'head', 'marketWindow', 'elasticity'].includes(t.dataset.k)) render(); return; }
+  if (act === 'clssync') { cs.classSync = t.checked; saveCls(); return; }
+  if (act === 'clsfeed') { cs.feeds[+t.dataset.i][t.dataset.k] = +t.value; if (t.dataset.k === 'price') cs.priceYear = 'custom'; saveCls(); return; }
+  if (act === 'clsslide') { cs[t.dataset.t][+t.dataset.i][1] = +t.value; cs.priceYear = 'custom'; saveCls(); return; }
+  if (act === 'clsyg') { cs.gridYG[+t.dataset.i] = +t.value; saveCls(); return; }
+  if (act === 'clstemp') { cs.temps[+t.dataset.i] = +t.value; saveCls(); return; }
+  if (act === 'clspath') { const k = t.dataset.p, paths = F.genPaths(c.code, cs); if (!cs[k]) cs[k] = (k === 'priceIdx' ? paths.live : paths.feed).slice(); cs[k][+t.dataset.i] = +t.value / 100; saveCls(); render(); return; }
+  if (t.id === 'clsLoad' && t.files[0]) { try { const o = parseClass(await t.files[0].text()); UI.cls = { code: o.classCode, settings: Object.assign(F.defaultSettings(), o.settings) }; changed(); toast('Class settings loaded for editing.'); } catch (err) { toast('That is not a class settings file for ' + APP_NAME + '.'); } return; }
+  if (t.id === 'classSize') { UI.classSize = Math.max(1, +t.value || 1); render(); return; }
+  if (t.id === 'idxOv') { UI.idxOverride = Math.max(0, +t.value) / 100; render(); return; }
+  if (t.id === 'bRound') { UI.bRound = +t.value || null; render(); return; }
+  if (t.id === 'bDeadline') { UI.bDeadline = t.value; return; }
+  if (t.id === 'bNote') { UI.bNote = t.value; return; }
+  if (act === 'closeround') { UI.closeRound = +t.value; UI.idxOverride = null; render(); return; }
+  if (t.id === 'subFiles' && t.files.length) {
+    let n = 0, bad = 0;
+    for (const f of Array.from(t.files)) { try { const o = JSON.parse(await f.text()); if (o.app !== 'bunkcall-sub') { bad++; continue; } UI.subs = UI.subs.filter(x => !(x.fid === o.fid && x.round === o.round)); UI.subs.push(o); n++; } catch (err) { bad++; } }
+    UI.idxOverride = null; UI.bRound = null; if (!UI.classSize || UI.classSize < roundSubs().list.length) UI.classSize = roundSubs().list.length;
+    render(); toast(`${n} submission${n === 1 ? '' : 's'} loaded${bad ? `, ${bad} skipped` : ''}.`); return;
+  }
+  if (t.id === 'cmpFiles' && t.files.length) {
+    for (const f of Array.from(t.files)) { try { const o = JSON.parse(await f.text()); if (o.app !== 'bunkcall-save') continue; const g = unpackState(o.data); UI.classRows.push(F.summary(g)); } catch (err) {} }
+    render(); return;
+  }
+});
+const clampN = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+document.addEventListener('input', e => { const t = e.target; if (t.id === 'pasteSave') UI.pasteSave = t.value; if (['nfName', 'nfCode', 'nfSettings'].includes(t.id)) readNewForm(); });
+
+/* ============ boot ============ */
+async function boot() {
+  UI.busy = 'Unloading the lambs…'; renderOverlays(); await tick();
+  st = loadLocal();
+  if (!st) { st = F.newGame({ name: 'Practice pen', classCode: 'PRACTICE' }); st.practice = true; }
+  if (location.hash === '#instructor') UI.view = 'instructor';
+  UI.busy = null; renderOverlays(); render(); save();
+}
+boot();
+})();
+</script></body></html>
